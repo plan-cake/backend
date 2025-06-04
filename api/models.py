@@ -13,3 +13,18 @@ class UserAccount(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["email"])]
+
+
+class UserSession(models.Model):
+    session_token = models.CharField(max_length=255, primary_key=True)
+    user_account_id = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name="session_tokens"
+    )
+    last_used = models.DateTimeField(auto_now=True)
+
+
+class UserLogin(models.Model):
+    user_account_id = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name="logins"
+    )
+    login_time = models.DateTimeField(auto_now_add=True)
