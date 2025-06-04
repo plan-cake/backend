@@ -17,14 +17,15 @@ class UserAccount(models.Model):
 
 class UserSession(models.Model):
     session_token = models.CharField(max_length=255, primary_key=True)
-    user_account_id = models.ForeignKey(
+    user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="session_tokens"
     )
     last_used = models.DateTimeField(auto_now=True)
 
 
 class UserLogin(models.Model):
-    user_account_id = models.ForeignKey(
+    pk = models.CompositePrimaryKey("user_account", "login_time")
+    user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="logins"
     )
     login_time = models.DateTimeField(auto_now_add=True)
