@@ -71,3 +71,31 @@ class UrlCode(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="url_codes"
     )
     last_used = DateTimeNoTZField(auto_now=True)
+
+
+class EventParticipant(models.Model):
+    pk = models.CompositePrimaryKey("user_event", "user_account")
+    user_event = models.ForeignKey(
+        UserEvent, on_delete=models.CASCADE, related_name="participants"
+    )
+    user_account = models.ForeignKey(
+        UserAccount, on_delete=models.SET_NULL, related_name="events_participated"
+    )
+    display_name = models.CharField(max_length=25, null=True)
+
+
+class EventWeekdayTimeslot(models.Model):
+    pk = models.CompositePrimaryKey("user_event", "weekday", "timeslot")
+    user_event = models.ForeignKey(
+        UserEvent, on_delete=models.CASCADE, related_name="weekday_timeslots"
+    )
+    weekday = models.PositiveSmallIntegerField()
+    timeslot = models.TimeField()
+
+
+class EventDateTimeslot(models.Model):
+    pk = models.CompositePrimaryKey("user_event", "timeslot")
+    user_event = models.ForeignKey(
+        UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
+    )
+    timeslot = DateTimeNoTZField()
