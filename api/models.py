@@ -79,7 +79,7 @@ class EventParticipant(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="participants"
     )
     user_account = models.ForeignKey(
-        UserAccount, on_delete=models.SET_NULL, related_name="events_participated"
+        UserAccount, on_delete=models.CASCADE, related_name="events_participated"
     )
     display_name = models.CharField(max_length=25, null=True)
 
