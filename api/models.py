@@ -35,7 +35,7 @@ class UserSession(models.Model):
 
 
 class UserLogin(models.Model):
-    pk = models.CompositePrimaryKey("user_account", "login_time")
+    user_login_id = models.AutoField(primary_key=True)
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="logins"
     )
@@ -74,7 +74,7 @@ class UrlCode(models.Model):
 
 
 class EventParticipant(models.Model):
-    pk = models.CompositePrimaryKey("user_event", "user_account")
+    event_participant_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="participants"
     )
@@ -85,7 +85,7 @@ class EventParticipant(models.Model):
 
 
 class EventWeekdayTimeslot(models.Model):
-    pk = models.CompositePrimaryKey("user_event", "weekday", "timeslot")
+    event_weekday_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="weekday_timeslots"
     )
@@ -94,7 +94,7 @@ class EventWeekdayTimeslot(models.Model):
 
 
 class EventDateTimeslot(models.Model):
-    pk = models.CompositePrimaryKey("user_event", "timeslot")
+    event_date_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
