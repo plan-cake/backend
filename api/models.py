@@ -1,6 +1,17 @@
 from django.db import models
 
 
+class DateTimeNoTZField(models.DateTimeField):
+    """
+    Custom DateTimeField without time zones
+    """
+
+    def db_type(self, connection):
+        if connection.vendor == "postgresql":
+            return "TIMESTAMP WITHOUT TIME ZONE"
+        return super().db_type(connection)
+
+
 class UserAccount(models.Model):
     user_account_id = models.AutoField(primary_key=True)
     email = models.EmailField(unique=True, null=True)
@@ -8,8 +19,8 @@ class UserAccount(models.Model):
     display_name = models.CharField(max_length=25, null=True)
     is_internal = models.BooleanField(default=False)
     is_guest = models.BooleanField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = DateTimeNoTZField(auto_now_add=True)
+    updated_at = DateTimeNoTZField(auto_now=True)
 
     class Meta:
         indexes = [models.Index(fields=["email"])]
@@ -20,7 +31,7 @@ class UserSession(models.Model):
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="session_tokens"
     )
-    last_used = models.DateTimeField(auto_now=True)
+    last_used = DateTimeNoTZField(auto_now=True)
 
 
 class UserLogin(models.Model):
@@ -28,7 +39,7 @@ class UserLogin(models.Model):
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="logins"
     )
-    login_time = models.DateTimeField(auto_now_add=True)
+    login_time = DateTimeNoTZField(auto_now_add=True)
 
 
 class UserEvent(models.Model):
@@ -47,8 +58,8 @@ class UserEvent(models.Model):
         choices=EventType.choices,
     )
     duration = models.PositiveSmallIntegerField(null=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = DateTimeNoTZField(auto_now_add=True)
+    updated_at = DateTimeNoTZField(auto_now=True)
 
     class Meta:
         indexes = [models.Index(fields=["user_account"])]
