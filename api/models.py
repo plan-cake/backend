@@ -99,3 +99,33 @@ class EventDateTimeslot(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
     timeslot = DateTimeNoTZField()
+
+
+class EventWeekdayAvailability(models.Model):
+    event_weekday_availability_id = models.AutoField(primary_key=True)
+    event_participant = models.ForeignKey(
+        EventParticipant,
+        on_delete=models.CASCADE,
+        related_name="event_weekday_availabilities",
+    )
+    event_weekday_timeslot = models.ForeignKey(
+        EventWeekdayTimeslot,
+        on_delete=models.CASCADE,
+        related_name="participant_availabilities",
+    )
+    is_available = models.BooleanField()
+
+
+class EventDateAvailability(models.Model):
+    event_date_availability_id = models.AutoField(primary_key=True)
+    event_participant = models.ForeignKey(
+        EventParticipant,
+        on_delete=models.CASCADE,
+        related_name="event_date_availabilities",
+    )
+    event_date_timeslot = models.ForeignKey(
+        EventDateTimeslot,
+        on_delete=models.CASCADE,
+        related_name="participant_availabilities",
+    )
+    is_available = models.BooleanField()
