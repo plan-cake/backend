@@ -26,7 +26,7 @@ def register(request):
     email = serializer.validated_data.get("email")
     password = serializer.validated_data.get("password")
     if errors := validate_password(password):
-        return Response({"error": errors}, status=400)
+        return Response({"error": {"password": errors}}, status=400)
 
     # Hash the password before saving
     pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
@@ -34,10 +34,13 @@ def register(request):
         # Check if the email already exists
         if UserAccount.objects.filter(email=email).exists():
             return Response(
-                {"error": "An account with this email already exists"}, status=400
+                {"error": {"email": ["An account with this email already exists"]}},
+                status=400,
             )
         UserAccount.objects.create(email=email, password_hash=pwd_hash, is_guest=False)
     except Exception as e:
         print(e)
-        return Response({"error": "An unknown error has occurred"}, status=500)
-    return Response({"message": f"Registration successful"})
+        return Response(
+            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+        )
+    return Response({"message": ["Registration successful"]})
