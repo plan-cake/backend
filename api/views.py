@@ -3,6 +3,8 @@ from rest_framework import serializers
 from rest_framework.response import Response
 
 from .models import UserAccount
+from .utils import validate_password
+
 import bcrypt
 
 
@@ -23,6 +25,9 @@ def register(request):
         return Response({"error": serializer.errors}, status=400)
     email = serializer.validated_data.get("email")
     password = serializer.validated_data.get("password")
+    if errors := validate_password(password):
+        return Response({"error": errors}, status=400)
+
     # Hash the password before saving
     pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
     try:
