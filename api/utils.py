@@ -55,6 +55,11 @@ def require_auth(func):
             )
             response.delete_cookie("account_sess_token")
             return response
+        except Exception as e:
+            print(e)
+            return Response(
+                {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            )
 
         response = func(request, *args, **kwargs)
         # Intercept the response to refresh the session token cookie
