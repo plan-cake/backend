@@ -74,3 +74,24 @@ def require_auth(func):
         return response
 
     return wrapper
+
+
+def validate_input(serializer_class):
+    """
+    A decorator to validate input data for a view function.
+
+    The `serializer_class` is used to validate the request data.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            serializer = serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return Response({"error": serializer.errors}, status=400)
+            request.validated_data = serializer.validated_data
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
