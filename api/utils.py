@@ -3,6 +3,7 @@ import functools
 from rest_framework.response import Response
 
 from api.models import UserSession
+from api.settings import SESS_EXP_SECONDS
 
 
 def validate_password(password):
@@ -41,9 +42,9 @@ def require_auth(func):
                 {"error": {"general": ["Authentication required"]}}, status=401
             )
         try:
-            # Delete sessions where last_used is more than 30 days ago
+            # Delete sessions where last_used is further than the expiration time
             UserSession.objects.filter(
-                last_used__lt=datetime.now() - timedelta(days=30)
+                last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS)
             ).delete()
             session = UserSession.objects.get(session_token=token)
             session.save()  # To update last_used to now
@@ -63,7 +64,7 @@ def require_auth(func):
             httponly=True,
             secure=True,
             samesite="Lax",
-            max_age=2592000,  # 30 days
+            max_age=SESS_EXP_SECONDS,
         )
         return response
 

@@ -4,6 +4,7 @@ from rest_framework.response import Response
 
 from django.db import transaction
 
+from api.settings import SESS_EXP_SECONDS
 from .models import UserAccount, UserSession
 from .utils import validate_password
 
@@ -64,6 +65,6 @@ def register(request):
         httponly=True,
         secure=True,
         samesite="Lax",
-        max_age=2592000,  # 30 days
+        max_age=SESS_EXP_SECONDS,
     )
     return response
