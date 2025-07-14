@@ -29,13 +29,7 @@ def register(request):
         return Response({"error": serializer.errors}, status=400)
     email = serializer.validated_data.get("email")
     password = serializer.validated_data.get("password")
-    if errors := validate_password(password):
-        return Response({"error": {"password": errors}}, status=400)
 
-    # Hash the password before saving
-    pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    # Create a session token for the new user
-    session_token = str(uuid.uuid4())
     try:
         # Check if the email already exists
         if UserAccount.objects.filter(email=email).exists():
@@ -44,10 +38,18 @@ def register(request):
                 status=400,
             )
 
+        # Then validate the password after
+        if errors := validate_password(password):
+            return Response({"error": {"password": errors}}, status=400)
+        pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+        # Now start a transaction to make sure both database calls are successful
         with transaction.atomic():
             new_user = UserAccount.objects.create(
                 email=email, password_hash=pwd_hash, is_guest=False
             )
+
+            session_token = str(uuid.uuid4())
             UserSession.objects.create(
                 session_token=session_token, user_account=new_user
             )
