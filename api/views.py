@@ -68,3 +68,41 @@ def register(request):
         max_age=SESS_EXP_SECONDS,
     )
     return response
+
+
+@api_view(["POST"])
+def login(request):
+    serializer = AccountInfoSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({"error": serializer.errors}, status=400)
+    email = serializer.validated_data.get("email")
+    password = serializer.validated_data.get("password")
+
+    try:
+        user = UserAccount.objects.get(email=email)
+        if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            return Response({"error": {"password": ["Incorrect password"]}}, status=400)
+
+        session_token = str(uuid.uuid4())
+        UserSession.objects.create(session_token=session_token, user_account=user)
+
+    except UserAccount.DoesNotExist:
+        return Response(
+            {"error": {"email": ["No account found with this email"]}}, status=404
+        )
+    except Exception as e:
+        print(e)
+        return Response(
+            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+        )
+
+    response = Response({"message": ["Login successful"]})
+    response.set_cookie(
+        key="account_sess_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=SESS_EXP_SECONDS,
+    )
+    return response
