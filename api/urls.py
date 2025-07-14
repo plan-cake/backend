@@ -22,4 +22,5 @@ from api import views
 urlpatterns = [
     path("api/", views.index),
     path("api/register/", views.register),
+    path("api/login/", views.login),
 ]
