@@ -6,7 +6,7 @@ from django.db import transaction
 
 from api.settings import SESS_EXP_SECONDS
 from .models import UserAccount, UserSession
-from .utils import validate_password
+from .utils import validate_input, validate_password
 
 import bcrypt
 import uuid
@@ -23,12 +23,10 @@ class AccountInfoSerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
+@validate_input(AccountInfoSerializer)
 def register(request):
-    serializer = AccountInfoSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response({"error": serializer.errors}, status=400)
-    email = serializer.validated_data.get("email")
-    password = serializer.validated_data.get("password")
+    email = request.validated_data.get("email")
+    password = request.validated_data.get("password")
 
     try:
         # Check if the email already exists
@@ -73,12 +71,10 @@ def register(request):
 
 
 @api_view(["POST"])
+@validate_input(AccountInfoSerializer)
 def login(request):
-    serializer = AccountInfoSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response({"error": serializer.errors}, status=400)
-    email = serializer.validated_data.get("email")
-    password = serializer.validated_data.get("password")
+    email = request.validated_data.get("email")
+    password = request.validated_data.get("password")
 
     try:
         user = UserAccount.objects.get(email=email)
