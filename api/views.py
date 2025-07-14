@@ -17,14 +17,14 @@ def index(request):
     return Response("Hello, world!")
 
 
-class RegisterSerializer(serializers.Serializer):
+class AccountInfoSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
 
 @api_view(["POST"])
 def register(request):
-    serializer = RegisterSerializer(data=request.data)
+    serializer = AccountInfoSerializer(data=request.data)
     if not serializer.is_valid():
         return Response({"error": serializer.errors}, status=400)
     email = serializer.validated_data.get("email")
