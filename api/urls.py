@@ -20,8 +20,8 @@ from django.urls import include, path
 from api import views
 
 urlpatterns = [
-    path("api/", views.index),
-    path("api/register/", views.register),
-    path("api/login/", views.login),
-    path("api/check-password/", views.check_password),
+    path("", views.index),
+    path("register/", views.register),
+    path("login/", views.login),
+    path("check-password/", views.check_password),
 ]
