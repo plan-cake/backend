@@ -104,3 +104,18 @@ def login(request):
         max_age=SESS_EXP_SECONDS,
     )
     return response
+
+
+class PasswordSerializer(serializers.Serializer):
+    password = serializers.CharField(required=True)
+
+
+@api_view(["POST"])
+@validate_input(PasswordSerializer)
+def check_password(request):
+    password = request.validated_data.get("password")
+
+    if errors := validate_password(password):
+        return Response({"error": {"password": errors}}, status=400)
+
+    return Response({"message": ["Password is valid"]})
