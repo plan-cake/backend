@@ -34,6 +34,14 @@ class UserSession(models.Model):
     last_used = DateTimeNoTZField(auto_now=True)
 
 
+class PasswordResetToken(models.Model):
+    reset_token = models.CharField(max_length=255, primary_key=True)
+    user_account = models.ForeignKey(
+        UserAccount, on_delete=models.CASCADE, related_name="password_reset_tokens"
+    )
+    created_at = DateTimeNoTZField(auto_now_add=True)
+
+
 class UserLogin(models.Model):
     user_login_id = models.AutoField(primary_key=True)
     user_account = models.ForeignKey(
