@@ -90,6 +90,7 @@ class EventParticipant(models.Model):
         UserAccount, on_delete=models.CASCADE, related_name="events_participated"
     )
     display_name = models.CharField(max_length=25, null=True)
+    time_zone = models.CharField(max_length=50, null=True)
 
 
 class EventWeekdayTimeslot(models.Model):
