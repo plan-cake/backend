@@ -76,18 +76,18 @@ def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
 
+    INCORRECT_AUTH_MSG = "Email or password is incorrect"  # To ensure consistency
+
     try:
         user = UserAccount.objects.get(email=email)
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-            return Response({"error": {"password": ["Incorrect password"]}}, status=400)
+            return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=400)
 
         session_token = str(uuid.uuid4())
         UserSession.objects.create(session_token=session_token, user_account=user)
 
     except UserAccount.DoesNotExist:
-        return Response(
-            {"error": {"email": ["No account found with this email"]}}, status=404
-        )
+        return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=404)
     except Exception as e:
         print(e)
         return Response(
