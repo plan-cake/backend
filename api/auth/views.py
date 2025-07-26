@@ -86,13 +86,18 @@ def verify_email(request):
         unverified_user = UnverifiedUserAccount.objects.get(verification_code=ver_code)
         with transaction.atomic():
             # Create the user account
-            UserAccount.objects.create(
+            new_user = UserAccount.objects.create(
                 email=unverified_user.email,
                 password_hash=unverified_user.password_hash,
                 is_guest=False,
             )
             # Delete the unverified user account
             unverified_user.delete()
+            # Automatically log in the user
+            session_token = str(uuid.uuid4())
+            UserSession.objects.create(
+                session_token=session_token, user_account=new_user
+            )
 
     except UnverifiedUserAccount.DoesNotExist:
         return Response(
@@ -104,7 +109,16 @@ def verify_email(request):
             {"error": {"general": ["An unknown error has occurred"]}}, status=500
         )
 
-    return Response({"message": ["Email verified successfully"]}, status=200)
+    response = Response({"message": ["Email verified successfully"]}, status=200)
+    response.set_cookie(
+        key="account_sess_token",
+        value=session_token,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=SESS_EXP_SECONDS,
+    )
+    return response
 
 
 @api_view(["POST"])
