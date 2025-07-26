@@ -69,6 +69,44 @@ def register(request):
         )
 
 
+class EmailVerifySerializer(serializers.Serializer):
+    verification_code = serializers.CharField(required=True)
+
+
+@api_view(["POST"])
+@validate_input(EmailVerifySerializer)
+def verify_email(request):
+    ver_code = request.validated_data.get("verification_code")
+    try:
+        # Remove expired verification codes
+        UnverifiedUserAccount.objects.filter(
+            created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
+        ).delete()
+
+        unverified_user = UnverifiedUserAccount.objects.get(verification_code=ver_code)
+        with transaction.atomic():
+            # Create the user account
+            UserAccount.objects.create(
+                email=unverified_user.email,
+                password_hash=unverified_user.password_hash,
+                is_guest=False,
+            )
+            # Delete the unverified user account
+            unverified_user.delete()
+
+    except UnverifiedUserAccount.DoesNotExist:
+        return Response(
+            {"error": {"ver_code": ["Invalid verification code"]}}, status=404
+        )
+    except Exception as e:
+        print(e)
+        return Response(
+            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+        )
+
+    return Response({"message": ["Email verified successfully"]}, status=200)
+
+
 @api_view(["POST"])
 @validate_input(AccountInfoSerializer)
 def login(request):
