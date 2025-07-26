@@ -44,15 +44,7 @@ def register(request):
         else:
             # Create an unverified user account
             ver_code = str(uuid.uuid4())
-            if UnverifiedUserAccount.objects.filter(
-                verification_code=ver_code
-            ).exists():
-                # In the astronomically low chance there's a UUID collision, return an error
-                return Response(
-                    {"error": {"general": ["An unknown error has occurred"]}},
-                    status=500,
-                )
-            elif UnverifiedUserAccount.objects.filter(email=email).exists():
+            if UnverifiedUserAccount.objects.filter(email=email).exists():
                 # If the email was already used, update the verification code
                 UnverifiedUserAccount.objects.filter(email=email).update(
                     verification_code=ver_code, created_at=datetime.now()
