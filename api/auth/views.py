@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db import transaction
 
 from api.settings import SESS_EXP_SECONDS
-from api.models import UserAccount, UserSession
+from api.models import UserAccount, UnverifiedUserAccount, UserSession
 from api.utils import validate_input
 from api.auth.utils import validate_password
 
@@ -25,45 +25,49 @@ def register(request):
     password = request.validated_data.get("password")
 
     try:
-        # Check if the email already exists
-        if UserAccount.objects.filter(email=email).exists():
-            return Response(
-                {"error": {"email": ["An account with this email already exists"]}},
-                status=400,
-            )
-
-        # Then validate the password after
+        # Validate the password first
         if errors := validate_password(password):
             return Response({"error": {"password": errors}}, status=400)
         pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
-        # Now start a transaction to make sure both database calls are successful
-        with transaction.atomic():
-            new_user = UserAccount.objects.create(
-                email=email, password_hash=pwd_hash, is_guest=False
-            )
+        # Check if the email already exists
+        if UserAccount.objects.filter(email=email).exists():
+            # TODO: send an email to the user to say the email is already registered
+            pass
+        else:
+            # Create an unverified user account
+            ver_code = str(uuid.uuid4())
+            if UnverifiedUserAccount.objects.filter(
+                verification_code=ver_code
+            ).exists():
+                # In the astronomically low chance there's a UUID collision, return an error
+                return Response(
+                    {"error": {"general": ["An unknown error has occurred"]}},
+                    status=500,
+                )
+            elif UnverifiedUserAccount.objects.filter(email=email).exists():
+                # If the email was already used, update the verification code
+                UnverifiedUserAccount.objects.filter(email=email).update(
+                    verification_code=ver_code
+                )
+            else:
+                UnverifiedUserAccount.objects.create(
+                    verification_code=ver_code,
+                    email=email,
+                    password_hash=pwd_hash,
+                )
+                # TODO: send an email to the user with the verification link
 
-            session_token = str(uuid.uuid4())
-            UserSession.objects.create(
-                session_token=session_token, user_account=new_user
-            )
+        return Response(
+            {"message": ["An email has been sent to your address for verification"]},
+            status=200,
+        )
 
     except Exception as e:
         print(e)
         return Response(
             {"error": {"general": ["An unknown error has occurred"]}}, status=500
         )
-
-    response = Response({"message": ["Registration successful"]})
-    response.set_cookie(
-        key="account_sess_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        max_age=SESS_EXP_SECONDS,
-    )
-    return response
 
 
 @api_view(["POST"])
