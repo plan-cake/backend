@@ -41,6 +41,9 @@ class UserSession(models.Model):
     is_infinite = models.BooleanField(default=False)
     last_used = DateTimeNoTZField(auto_now=True)
 
+    class Meta:
+        indexes = [models.Index(fields=["is_infinite", "last_used"])]
+
 
 class PasswordResetToken(models.Model):
     reset_token = models.CharField(max_length=255, primary_key=True)
