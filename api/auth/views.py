@@ -13,7 +13,7 @@ from api.models import (
     UserSession,
     PasswordResetToken,
 )
-from api.utils import validate_input
+from api.utils import validate_input, require_auth
 from api.auth.utils import validate_password
 
 import bcrypt
@@ -276,3 +276,21 @@ def reset_password(request):
         )
 
     return Response({"message": ["Password reset successfully."]}, status=200)
+
+
+@api_view(["POST"])
+@require_auth
+def logout(request):
+    try:
+        # Guaranteed to exist because of the decorator
+        token = request.COOKIES.get("account_sess_token")
+        UserSession.objects.filter(session_token=token).delete()
+    except Exception as e:
+        print(e)
+        return Response(
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
+        )
+
+    response = Response({"message": ["Logged out successfully."]}, status=200)
+    response.delete_cookie("account_sess_token")
+    return response
