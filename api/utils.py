@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from django.db import transaction
 
 from api.models import UserAccount, UserSession
-from api.settings import SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
+from api.settings import SESS_EXP_SECONDS, LONG_SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
 
 import uuid
 
@@ -45,7 +45,11 @@ def require_auth(func):
                     httponly=True,
                     secure=True,
                     samesite="Lax",
-                    max_age=SESS_EXP_SECONDS,
+                    max_age=(
+                        LONG_SESS_EXP_SECONDS
+                        if session.is_infinite
+                        else SESS_EXP_SECONDS
+                    ),
                 )
                 return response
             except UserSession.DoesNotExist:
@@ -73,7 +77,7 @@ def require_auth(func):
                     httponly=True,
                     secure=True,
                     samesite="Lax",
-                    max_age=SESS_EXP_SECONDS,
+                    max_age=LONG_SESS_EXP_SECONDS,
                 )
             except UserSession.DoesNotExist:
                 print(
@@ -106,7 +110,7 @@ def require_auth(func):
                     httponly=True,
                     secure=True,
                     samesite="Lax",
-                    max_age=SESS_EXP_SECONDS,
+                    max_age=LONG_SESS_EXP_SECONDS,
                 )
             except Exception as e:
                 print(e)
