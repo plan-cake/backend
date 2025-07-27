@@ -12,6 +12,7 @@ from api.models import (
     UnverifiedUserAccount,
     UserSession,
     PasswordResetToken,
+    UserLogin,
 )
 from api.utils import validate_input, require_auth
 from api.auth.utils import validate_password
@@ -103,6 +104,7 @@ def verify_email(request):
             UserSession.objects.create(
                 session_token=session_token, user_account=new_user
             )
+            UserLogin.objects.create(user_account=new_user)
 
     except UnverifiedUserAccount.DoesNotExist:
         return Response(
@@ -140,7 +142,9 @@ def login(request):
             return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=400)
 
         session_token = str(uuid.uuid4())
-        UserSession.objects.create(session_token=session_token, user_account=user)
+        with transaction.atomic():
+            UserSession.objects.create(session_token=session_token, user_account=user)
+            UserLogin.objects.create(user_account=user)
 
     except UserAccount.DoesNotExist:
         return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=404)
