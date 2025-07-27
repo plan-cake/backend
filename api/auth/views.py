@@ -220,3 +220,38 @@ def start_password_reset(request):
         },
         status=200,
     )
+
+
+class PasswordResetSerializer(serializers.Serializer):
+    reset_token = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+
+@api_view(["POST"])
+@validate_input(PasswordResetSerializer)
+def reset_password(request):
+    reset_token = request.validated_data.get("reset_token")
+    new_password = request.validated_data.get("new_password")
+
+    if errors := validate_password(new_password):
+        return Response({"error": {"password": errors}}, status=400)
+
+    try:
+        with transaction.atomic():
+            reset_token_obj = PasswordResetToken.objects.get(reset_token=reset_token)
+            user = reset_token_obj.user_account
+            user.password_hash = bcrypt.hashpw(
+                new_password.encode(), bcrypt.gensalt()
+            ).decode()
+            user.save()
+            reset_token_obj.delete()  # Make sure to remove the reset token after use
+
+    except PasswordResetToken.DoesNotExist:
+        return Response({"error": {"reset_token": ["Invalid reset token"]}}, status=404)
+    except Exception as e:
+        print(e)
+        return Response(
+            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+        )
+
+    return Response({"message": ["Password reset successfully"]}, status=200)
