@@ -26,13 +26,13 @@ import bcrypt
 import uuid
 
 
-class AccountInfoSerializer(serializers.Serializer):
+class RegisterAccountSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
     password = serializers.CharField(required=True)
 
 
 @api_view(["POST"])
-@validate_json_input(AccountInfoSerializer)
+@validate_json_input(RegisterAccountSerializer)
 def register(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
@@ -129,11 +129,18 @@ def verify_email(request):
     return response
 
 
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    password = serializers.CharField(required=True)
+    remember_me = serializers.BooleanField(default=False, required=False)
+
+
 @api_view(["POST"])
-@validate_json_input(AccountInfoSerializer)
+@validate_json_input(LoginSerializer)
 def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
+    remember_me = request.validated_data.get("remember_me")
 
     BAD_AUTH_RESPONSE = Response(
         {"error": {"general": ["Email or password is incorrect."]}}, status=400
@@ -146,7 +153,9 @@ def login(request):
 
         session_token = str(uuid.uuid4())
         with transaction.atomic():
-            UserSession.objects.create(session_token=session_token, user_account=user)
+            UserSession.objects.create(
+                session_token=session_token, user_account=user, is_infinite=remember_me
+            )
             UserLogin.objects.create(user_account=user)
 
     except UserAccount.DoesNotExist:
