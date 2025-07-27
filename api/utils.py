@@ -20,7 +20,7 @@ def require_auth(func):
         token = request.COOKIES.get("account_sess_token")
         if not token:
             return Response(
-                {"error": {"general": ["Authentication required"]}}, status=401
+                {"error": {"general": ["Authentication required."]}}, status=401
             )
         try:
             # Delete sessions where last_used is further than the expiration time
@@ -31,13 +31,15 @@ def require_auth(func):
             session.save()  # To update last_used to now
             request.user = session.user_account
         except UserSession.DoesNotExist:
-            response = Response({"error": {"general": ["Session expired"]}}, status=401)
+            response = Response(
+                {"error": {"general": ["Session expired."]}}, status=401
+            )
             response.delete_cookie("account_sess_token")
             return response
         except Exception as e:
             print(e)
             return Response(
-                {"error": {"general": ["An unknown error has occurred"]}}, status=500
+                {"error": {"general": ["An unknown error has occurred."]}}, status=500
             )
 
         response = func(request, *args, **kwargs)
