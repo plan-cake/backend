@@ -234,7 +234,7 @@ def reset_password(request):
     new_password = request.validated_data.get("new_password")
 
     if errors := validate_password(new_password):
-        return Response({"error": {"password": errors}}, status=400)
+        return Response({"error": {"new_password": errors}}, status=400)
 
     try:
         with transaction.atomic():
