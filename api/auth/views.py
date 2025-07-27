@@ -240,6 +240,20 @@ def reset_password(request):
         with transaction.atomic():
             reset_token_obj = PasswordResetToken.objects.get(reset_token=reset_token)
             user = reset_token_obj.user_account
+
+            # Check if the new password is actually new
+            if bcrypt.checkpw(new_password.encode(), user.password_hash.encode()):
+                return Response(
+                    {
+                        "error": {
+                            "new_password": [
+                                "New password must be different from old password"
+                            ]
+                        }
+                    },
+                    status=400,
+                )
+
             user.password_hash = bcrypt.hashpw(
                 new_password.encode(), bcrypt.gensalt()
             ).decode()
