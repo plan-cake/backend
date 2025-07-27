@@ -289,12 +289,10 @@ def reset_password(request):
 
 
 @api_view(["POST"])
-@require_auth
 def logout(request):
     try:
-        # Guaranteed to exist because of the decorator
-        token = request.COOKIES.get("account_sess_token")
-        UserSession.objects.filter(session_token=token).delete()
+        if token := request.COOKIES.get("account_sess_token"):
+            UserSession.objects.filter(session_token=token).delete()
     except Exception as e:
         print(e)
         return GENERIC_ERR_RESPONSE
