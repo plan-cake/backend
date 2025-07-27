@@ -237,6 +237,11 @@ def reset_password(request):
         return Response({"error": {"new_password": errors}}, status=400)
 
     try:
+        # Remove expired password reset tokens
+        PasswordResetToken.objects.filter(
+            created_at__lt=datetime.now() - timedelta(seconds=PWD_RESET_EXP_SECONDS)
+        ).delete()
+
         with transaction.atomic():
             reset_token_obj = PasswordResetToken.objects.get(reset_token=reset_token)
             user = reset_token_obj.user_account
