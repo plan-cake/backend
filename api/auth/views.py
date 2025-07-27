@@ -14,7 +14,7 @@ from api.models import (
     PasswordResetToken,
     UserLogin,
 )
-from api.utils import validate_input, require_auth
+from api.utils import validate_json_input, require_auth
 from api.auth.utils import validate_password
 
 import bcrypt
@@ -27,7 +27,7 @@ class AccountInfoSerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
-@validate_input(AccountInfoSerializer)
+@validate_json_input(AccountInfoSerializer)
 def register(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
@@ -80,7 +80,7 @@ class EmailVerifySerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
-@validate_input(EmailVerifySerializer)
+@validate_json_input(EmailVerifySerializer)
 def verify_email(request):
     ver_code = request.validated_data.get("verification_code")
     try:
@@ -129,7 +129,7 @@ def verify_email(request):
 
 
 @api_view(["POST"])
-@validate_input(AccountInfoSerializer)
+@validate_json_input(AccountInfoSerializer)
 def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
@@ -171,7 +171,7 @@ class PasswordSerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
-@validate_input(PasswordSerializer)
+@validate_json_input(PasswordSerializer)
 def check_password(request):
     password = request.validated_data.get("password")
 
@@ -186,7 +186,7 @@ class EmailSerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
-@validate_input(EmailSerializer)
+@validate_json_input(EmailSerializer)
 def start_password_reset(request):
     email = request.validated_data.get("email")
     try:
@@ -232,7 +232,7 @@ class PasswordResetSerializer(serializers.Serializer):
 
 
 @api_view(["POST"])
-@validate_input(PasswordResetSerializer)
+@validate_json_input(PasswordResetSerializer)
 def reset_password(request):
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")

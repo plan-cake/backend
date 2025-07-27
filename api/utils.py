@@ -57,9 +57,9 @@ def require_auth(func):
     return wrapper
 
 
-def validate_input(serializer_class):
+def validate_json_input(serializer_class):
     """
-    A decorator to validate input data for a view function.
+    A decorator to validate JSON input data for a view function.
 
     The `serializer_class` is used to validate the request data.
     """
@@ -68,6 +68,40 @@ def validate_input(serializer_class):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
             serializer = serializer_class(data=request.data)
+            if not serializer.is_valid():
+                return Response({"error": serializer.errors}, status=400)
+            request.validated_data = serializer.validated_data
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def validate_query_param_input(serializer_class):
+    """
+    A decorator to validate query parameters for a view function.
+
+    The `serializer_class` is used to validate the query parameters.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            # Parse the query parameters into a dictionary
+            # This allows for both single and multiple values for the same key
+            query_dict = {}
+            for key in request.query_params:
+                value = request.query_params.getlist(key)
+                if isinstance(value, list):
+                    if len(value) == 1:
+                        query_dict[key] = value[0]
+                    else:
+                        query_dict[key] = value
+                elif isinstance(value, str):
+                    query_dict[key] = value
+
+            serializer = serializer_class(data=query_dict)
             if not serializer.is_valid():
                 return Response({"error": serializer.errors}, status=400)
             request.validated_data = serializer.validated_data
