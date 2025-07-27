@@ -3,7 +3,7 @@ import functools
 from rest_framework.response import Response
 
 from api.models import UserSession
-from api.settings import SESS_EXP_SECONDS
+from api.settings import SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
 
 
 def require_auth(func):
@@ -38,9 +38,7 @@ def require_auth(func):
             return response
         except Exception as e:
             print(e)
-            return Response(
-                {"error": {"general": ["An unknown error has occurred."]}}, status=500
-            )
+            return GENERIC_ERR_RESPONSE
 
         response = func(request, *args, **kwargs)
         # Intercept the response to refresh the session token cookie

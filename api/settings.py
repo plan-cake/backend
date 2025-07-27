@@ -1,5 +1,6 @@
 import environ
 from pathlib import Path
+from rest_framework.response import Response
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -69,3 +70,7 @@ SESS_EXP_SECONDS = 2592000  # 30 days
 EMAIL_CODE_EXP_SECONDS = 1800  # 30 minutes
 
 PWD_RESET_EXP_SECONDS = 1800  # 30 minutes
+
+GENERIC_ERR_RESPONSE = Response(
+    {"error": {"general": ["An unknown error has occurred."]}}, status=500
+)

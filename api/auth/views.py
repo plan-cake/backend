@@ -6,7 +6,12 @@ from django.db import transaction
 
 from datetime import datetime, timedelta
 
-from api.settings import SESS_EXP_SECONDS, EMAIL_CODE_EXP_SECONDS, PWD_RESET_EXP_SECONDS
+from api.settings import (
+    SESS_EXP_SECONDS,
+    EMAIL_CODE_EXP_SECONDS,
+    PWD_RESET_EXP_SECONDS,
+    GENERIC_ERR_RESPONSE,
+)
 from api.models import (
     UserAccount,
     UnverifiedUserAccount,
@@ -70,9 +75,7 @@ def register(request):
 
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
 
 class EmailVerifySerializer(serializers.Serializer):
@@ -112,9 +115,7 @@ def verify_email(request):
         )
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Email verified successfully."]}, status=200)
     response.set_cookie(
@@ -152,9 +153,7 @@ def login(request):
         return BAD_AUTH_RESPONSE
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Login successful."]}, status=200)
     response.set_cookie(
@@ -214,9 +213,7 @@ def start_password_reset(request):
         pass  # Do not reveal if the email exists or not
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
     return Response(
         {
@@ -277,9 +274,7 @@ def reset_password(request):
         )
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Password reset successfully."]}, status=200)
 
@@ -293,9 +288,7 @@ def logout(request):
         UserSession.objects.filter(session_token=token).delete()
     except Exception as e:
         print(e)
-        return Response(
-            {"error": {"general": ["An unknown error has occurred."]}}, status=500
-        )
+        return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Logged out successfully."]}, status=200)
     response.delete_cookie("account_sess_token")
