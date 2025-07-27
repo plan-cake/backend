@@ -106,7 +106,7 @@ def verify_email(request):
 
     except UnverifiedUserAccount.DoesNotExist:
         return Response(
-            {"error": {"ver_code": ["Invalid verification code"]}}, status=404
+            {"error": {"verification_code": ["Invalid verification code"]}}, status=404
         )
     except Exception as e:
         print(e)
