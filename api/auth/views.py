@@ -134,12 +134,14 @@ def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
 
-    INCORRECT_AUTH_MSG = "Email or password is incorrect."  # To ensure consistency
+    BAD_AUTH_RESPONSE = Response(
+        {"error": {"general": ["Email or password is incorrect."]}}, status=400
+    )  # To ensure consistency
 
     try:
         user = UserAccount.objects.get(email=email)
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-            return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=400)
+            return BAD_AUTH_RESPONSE
 
         session_token = str(uuid.uuid4())
         with transaction.atomic():
@@ -147,7 +149,7 @@ def login(request):
             UserLogin.objects.create(user_account=user)
 
     except UserAccount.DoesNotExist:
-        return Response({"error": {"general": [INCORRECT_AUTH_MSG]}}, status=404)
+        return BAD_AUTH_RESPONSE
     except Exception as e:
         print(e)
         return Response(
