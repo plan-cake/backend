@@ -6,8 +6,13 @@ from django.db import transaction
 
 from datetime import datetime, timedelta
 
-from api.settings import SESS_EXP_SECONDS, EMAIL_CODE_EXP_SECONDS
-from api.models import UserAccount, UnverifiedUserAccount, UserSession
+from api.settings import SESS_EXP_SECONDS, EMAIL_CODE_EXP_SECONDS, PWD_RESET_EXP_SECONDS
+from api.models import (
+    UserAccount,
+    UnverifiedUserAccount,
+    UserSession,
+    PasswordResetToken,
+)
 from api.utils import validate_input
 from api.auth.utils import validate_password
 
@@ -170,3 +175,48 @@ def check_password(request):
         return Response({"error": {"password": errors}}, status=400)
 
     return Response({"message": ["Password is valid"]})
+
+
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+@api_view(["POST"])
+@validate_input(EmailSerializer)
+def start_password_reset(request):
+    email = request.validated_data.get("email")
+    try:
+        # Remove expired password reset tokens
+        PasswordResetToken.objects.filter(
+            created_at__lt=datetime.now() - timedelta(seconds=PWD_RESET_EXP_SECONDS)
+        ).delete()
+
+        user = UserAccount.objects.get(email=email)
+        reset_token = str(uuid.uuid4())
+        if PasswordResetToken.objects.filter(user_account=user).exists():
+            # If the user already has a reset token, update it
+            PasswordResetToken.objects.filter(user_account=user).update(
+                reset_token=reset_token, created_at=datetime.now()
+            )
+        else:
+            # Create a new password reset token
+            PasswordResetToken.objects.create(
+                reset_token=reset_token, user_account=user
+            )
+        # TODO: Send the email to the user
+    except UserAccount.DoesNotExist:
+        pass  # Do not reveal if the email exists or not
+    except Exception as e:
+        print(e)
+        return Response(
+            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+        )
+
+    return Response(
+        {
+            "message": [
+                "An email has been sent to your address with password reset instructions"
+            ]
+        },
+        status=200,
+    )
