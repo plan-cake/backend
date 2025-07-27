@@ -23,9 +23,10 @@ def require_auth(func):
                 {"error": {"general": ["Authentication required."]}}, status=401
             )
         try:
-            # Delete sessions where last_used is further than the expiration time
+            # Delete non-infinite sessions where last_used is further than the expiration time
             UserSession.objects.filter(
-                last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS)
+                is_infinite=False,
+                last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
             ).delete()
             session = UserSession.objects.get(session_token=token)
             session.save()  # To update last_used to now
