@@ -63,14 +63,14 @@ def register(request):
                 # TODO: send an email to the user with the verification link
 
         return Response(
-            {"message": ["An email has been sent to your address for verification"]},
+            {"message": ["An email has been sent to your address for verification."]},
             status=200,
         )
 
     except Exception as e:
         print(e)
         return Response(
-            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
         )
 
 
@@ -106,15 +106,15 @@ def verify_email(request):
 
     except UnverifiedUserAccount.DoesNotExist:
         return Response(
-            {"error": {"verification_code": ["Invalid verification code"]}}, status=404
+            {"error": {"verification_code": ["Invalid verification code."]}}, status=404
         )
     except Exception as e:
         print(e)
         return Response(
-            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
         )
 
-    response = Response({"message": ["Email verified successfully"]}, status=200)
+    response = Response({"message": ["Email verified successfully."]}, status=200)
     response.set_cookie(
         key="account_sess_token",
         value=session_token,
@@ -132,7 +132,7 @@ def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
 
-    INCORRECT_AUTH_MSG = "Email or password is incorrect"  # To ensure consistency
+    INCORRECT_AUTH_MSG = "Email or password is incorrect."  # To ensure consistency
 
     try:
         user = UserAccount.objects.get(email=email)
@@ -147,10 +147,10 @@ def login(request):
     except Exception as e:
         print(e)
         return Response(
-            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
         )
 
-    response = Response({"message": ["Login successful"]})
+    response = Response({"message": ["Login successful."]}, status=200)
     response.set_cookie(
         key="account_sess_token",
         value=session_token,
@@ -174,7 +174,7 @@ def check_password(request):
     if errors := validate_password(password):
         return Response({"error": {"password": errors}}, status=400)
 
-    return Response({"message": ["Password is valid"]})
+    return Response({"message": ["Password is valid."]})
 
 
 class EmailSerializer(serializers.Serializer):
@@ -209,13 +209,13 @@ def start_password_reset(request):
     except Exception as e:
         print(e)
         return Response(
-            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
         )
 
     return Response(
         {
             "message": [
-                "An email has been sent to your address with password reset instructions"
+                "An email has been sent to your address with password reset instructions."
             ]
         },
         status=200,
@@ -252,7 +252,7 @@ def reset_password(request):
                     {
                         "error": {
                             "new_password": [
-                                "New password must be different from old password"
+                                "New password must be different from old password."
                             ]
                         }
                     },
@@ -266,11 +266,13 @@ def reset_password(request):
             reset_token_obj.delete()  # Make sure to remove the reset token after use
 
     except PasswordResetToken.DoesNotExist:
-        return Response({"error": {"reset_token": ["Invalid reset token"]}}, status=404)
+        return Response(
+            {"error": {"reset_token": ["Invalid reset token."]}}, status=404
+        )
     except Exception as e:
         print(e)
         return Response(
-            {"error": {"general": ["An unknown error has occurred"]}}, status=500
+            {"error": {"general": ["An unknown error has occurred."]}}, status=500
         )
 
-    return Response({"message": ["Password reset successfully"]}, status=200)
+    return Response({"message": ["Password reset successfully."]}, status=200)
