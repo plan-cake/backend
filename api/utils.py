@@ -31,9 +31,7 @@ def require_auth(func):
             session.save()  # To update last_used to now
             request.user = session.user_account
         except UserSession.DoesNotExist:
-            response = Response(
-                {"error": {"general": ["Authentication required"]}}, status=401
-            )
+            response = Response({"error": {"general": ["Session expired"]}}, status=401)
             response.delete_cookie("account_sess_token")
             return response
         except Exception as e:
