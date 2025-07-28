@@ -20,7 +20,7 @@ from api.models import (
     PasswordResetToken,
     UserLogin,
 )
-from api.utils import validate_json_input, require_auth
+from api.utils import validate_json_input, require_account_auth
 from api.auth.utils import validate_password
 
 import bcrypt
@@ -175,6 +175,17 @@ def check_password(request):
         return Response({"error": {"password": errors}}, status=400)
 
     return Response({"message": ["Password is valid."]})
+
+
+@api_view(["GET"])
+@require_account_auth
+def check_account_auth(request):
+    """
+    Endpoint to check if the user is authenticated.
+
+    In the future, this could also return data like settings and personalization.
+    """
+    return Response({"message": [f"Logged in as {request.user.email}."]}, status=200)
 
 
 class EmailSerializer(serializers.Serializer):
