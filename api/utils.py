@@ -88,12 +88,31 @@ def require_auth(func):
                     max_age=LONG_SESS_EXP_SECONDS,
                 )
             except UserSession.DoesNotExist:
-                print(
-                    f"Guest session {guest_token} does not exist. Either something went wrong, or someone's doing something weird with the API."
-                )
-                response = Response(
-                    {"error": {"general": ["Guest session expired."]}}, status=401
-                )
+                # Create a new guest user
+                try:
+                    with transaction.atomic():
+                        guest_account = UserAccount.objects.create(is_guest=True)
+                        new_session_token = str(uuid.uuid4())
+                        guest_session = UserSession.objects.create(
+                            session_token=new_session_token,
+                            user_account=guest_account,
+                            is_extended=True,
+                        )
+
+                    request.user = guest_account
+                    # Run the function
+                    response = func(request, *args, **kwargs)
+                    response.set_cookie(
+                        key="guest_sess_token",
+                        value=guest_session.session_token,
+                        httponly=True,
+                        secure=True,
+                        samesite="Lax",
+                        max_age=LONG_SESS_EXP_SECONDS,
+                    )
+                except Exception as e:
+                    print(e)
+                    return GENERIC_ERR_RESPONSE
             except Exception as e:
                 print(e)
                 return GENERIC_ERR_RESPONSE
