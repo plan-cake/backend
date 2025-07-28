@@ -297,3 +297,22 @@ def logout(request):
     response = Response({"message": ["Logged out successfully."]}, status=200)
     response.delete_cookie("account_sess_token")
     return response
+
+
+@api_view(["POST"])
+@require_account_auth
+@validate_json_input(PasswordSerializer)
+def delete_account(request):
+    password = request.validated_data.get("password")
+    user = request.user
+    if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+        return Response({"error": {"password": ["Incorrect password."]}}, status=400)
+    try:
+        user.delete()
+    except Exception as e:
+        print(e)
+        return GENERIC_ERR_RESPONSE
+
+    response = Response({"message": ["Account deleted successfully."]}, status=200)
+    response.delete_cookie("account_sess_token")
+    return response
