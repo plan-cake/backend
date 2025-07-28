@@ -25,11 +25,19 @@ def require_auth(func):
         acct_sess_expired = False
         if acct_token:
             try:
-                # Delete non-extended sessions where last_used is further than the expiration time
+                # Delete sessions where last_used is further than the expiration time
+                # Non-extended
                 UserSession.objects.filter(
                     is_extended=False,
                     last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
                 ).delete()
+                # Extended
+                UserSession.objects.filter(
+                    is_extended=True,
+                    last_used__lt=datetime.now()
+                    - timedelta(seconds=LONG_SESS_EXP_SECONDS),
+                ).delete()
+
                 with transaction.atomic():
                     session = UserSession.objects.get(session_token=acct_token)
                     session.save()  # To update last_used to now
