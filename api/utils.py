@@ -157,6 +157,7 @@ def require_auth(func):
                 response.data["message"].append(SESS_EXP_MSG)
             else:
                 response.data["message"] = [SESS_EXP_MSG]
+            response.delete_cookie("account_sess_token")
         return response
 
     return wrapper
