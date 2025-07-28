@@ -159,6 +159,74 @@ def require_auth(func):
     return wrapper
 
 
+def require_account_auth(func):
+    """
+    A decorator to check if the user is authenticated **strictly with an account** based
+    on their cookies.
+
+    If the user is not authenticated, an error message will be returned.
+
+    The `user` object is made available in the `request` argument after authentication.
+
+    If authenticated, this refreshes the session token cookie with the response.
+    """
+
+    @functools.wraps(func)
+    def wrapper(request, *args, **kwargs):
+        acct_token = request.COOKIES.get("account_sess_token")
+
+        BAD_AUTH_RESPONSE = Response(
+            {"error": {"general": ["Account required."]}}, status=401
+        )
+
+        if acct_token:
+            try:
+                # Delete sessions where last_used is further than the expiration time
+                # Non-extended
+                UserSession.objects.filter(
+                    is_extended=False,
+                    last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
+                ).delete()
+                # Extended
+                UserSession.objects.filter(
+                    is_extended=True,
+                    last_used__lt=datetime.now()
+                    - timedelta(seconds=LONG_SESS_EXP_SECONDS),
+                ).delete()
+
+                with transaction.atomic():
+                    session = UserSession.objects.get(session_token=acct_token)
+                    session.save()  # To update last_used to now
+
+                # At this point the account is authenticated
+                request.user = session.user_account
+
+                response = func(request, *args, **kwargs)
+                # Intercept the response to refresh the session token cookie
+                response.set_cookie(
+                    key="account_sess_token",
+                    value=acct_token,
+                    httponly=True,
+                    secure=True,
+                    samesite="Lax",
+                    max_age=(
+                        LONG_SESS_EXP_SECONDS
+                        if session.is_extended
+                        else SESS_EXP_SECONDS
+                    ),
+                )
+                return response
+            except UserSession.DoesNotExist:
+                return BAD_AUTH_RESPONSE
+            except Exception as e:
+                print(e)
+                return GENERIC_ERR_RESPONSE
+        else:
+            return BAD_AUTH_RESPONSE
+
+    return wrapper
+
+
 def validate_json_input(serializer_class):
     """
     A decorator to validate JSON input data for a view function.
