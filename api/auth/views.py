@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from api.settings import (
     SESS_EXP_SECONDS,
+    LONG_SESS_EXP_SECONDS,
     EMAIL_CODE_EXP_SECONDS,
     PWD_RESET_EXP_SECONDS,
     GENERIC_ERR_RESPONSE,
@@ -156,7 +157,7 @@ def login(request):
         httponly=True,
         secure=True,
         samesite="Lax",
-        max_age=SESS_EXP_SECONDS,
+        max_age=LONG_SESS_EXP_SECONDS if remember_me else SESS_EXP_SECONDS,
     )
     return response
 
