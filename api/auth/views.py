@@ -102,12 +102,6 @@ def verify_email(request):
             )
             # Delete the unverified user account
             unverified_user.delete()
-            # Automatically log in the user
-            session_token = str(uuid.uuid4())
-            UserSession.objects.create(
-                session_token=session_token, user_account=new_user
-            )
-            UserLogin.objects.create(user_account=new_user)
 
     except UnverifiedUserAccount.DoesNotExist:
         return Response(
@@ -117,16 +111,7 @@ def verify_email(request):
         print(e)
         return GENERIC_ERR_RESPONSE
 
-    response = Response({"message": ["Email verified successfully."]}, status=200)
-    response.set_cookie(
-        key="account_sess_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        max_age=SESS_EXP_SECONDS,
-    )
-    return response
+    return Response({"message": ["Email verified successfully."]}, status=200)
 
 
 class LoginSerializer(serializers.Serializer):
