@@ -140,7 +140,7 @@ def login(request):
         session_token = str(uuid.uuid4())
         with transaction.atomic():
             UserSession.objects.create(
-                session_token=session_token, user_account=user, is_infinite=remember_me
+                session_token=session_token, user_account=user, is_extended=remember_me
             )
             UserLogin.objects.create(user_account=user)
 

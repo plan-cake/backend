@@ -38,11 +38,11 @@ class UserSession(models.Model):
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="session_tokens"
     )
-    is_infinite = models.BooleanField(default=False)
+    is_extended = models.BooleanField(default=False)
     last_used = DateTimeNoTZField(auto_now=True)
 
     class Meta:
-        indexes = [models.Index(fields=["is_infinite", "last_used"])]
+        indexes = [models.Index(fields=["is_extended", "last_used"])]
 
 
 class PasswordResetToken(models.Model):

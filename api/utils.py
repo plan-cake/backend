@@ -25,9 +25,9 @@ def require_auth(func):
         acct_sess_expired = False
         if acct_token:
             try:
-                # Delete non-infinite sessions where last_used is further than the expiration time
+                # Delete non-extended sessions where last_used is further than the expiration time
                 UserSession.objects.filter(
-                    is_infinite=False,
+                    is_extended=False,
                     last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
                 ).delete()
                 with transaction.atomic():
@@ -47,7 +47,7 @@ def require_auth(func):
                     samesite="Lax",
                     max_age=(
                         LONG_SESS_EXP_SECONDS
-                        if session.is_infinite
+                        if session.is_extended
                         else SESS_EXP_SECONDS
                     ),
                 )
@@ -90,7 +90,7 @@ def require_auth(func):
                 print(e)
                 return GENERIC_ERR_RESPONSE
         else:
-            # Create a guest user with an infinite session
+            # Create a guest user with an extended session
             try:
                 with transaction.atomic():
                     guest_account = UserAccount.objects.create(is_guest=True)
@@ -98,7 +98,7 @@ def require_auth(func):
                     guest_session = UserSession.objects.create(
                         session_token=new_session_token,
                         user_account=guest_account,
-                        is_infinite=True,
+                        is_extended=True,
                     )
 
                 request.user = guest_account
