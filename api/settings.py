@@ -76,3 +76,13 @@ PWD_RESET_EXP_SECONDS = 1800  # 30 minutes
 GENERIC_ERR_RESPONSE = Response(
     {"error": {"general": ["An unknown error has occurred."]}}, status=500
 )
+
+# AWS SES Credentials
+EMAIL_BACKEND = "django_ses.SESBackend"
+AWS_SES_ACCESS_KEY_ID = env("AWS_SES_ACCESS_KEY_ID")
+AWS_SES_SECRET_ACCESS_KEY = env("AWS_SES_SECRET_ACCESS_KEY")
+AWS_SES_REGION_NAME = env("AWS_SES_REGION_NAME")
+AWS_SES_REGION_ENDPOINT = env("AWS_SES_REGION_ENDPOINT")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+
+BASE_URL = env("BASE_URL")

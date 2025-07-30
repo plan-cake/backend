@@ -3,6 +3,7 @@ from rest_framework import serializers
 from rest_framework.response import Response
 
 from django.db import transaction
+from django.core.mail import send_mail
 
 from datetime import datetime, timedelta
 
@@ -12,6 +13,7 @@ from api.settings import (
     EMAIL_CODE_EXP_SECONDS,
     PWD_RESET_EXP_SECONDS,
     GENERIC_ERR_RESPONSE,
+    BASE_URL,
 )
 from api.models import (
     UserAccount,
@@ -51,7 +53,13 @@ def register(request):
 
         # Check if the email already exists
         if UserAccount.objects.filter(email=email).exists():
-            # TODO: send an email to the user to say the email is already registered
+            send_mail(
+                subject="Plancake - Email in Use",
+                message=f"Looks like your email was already used for a Plancake account.\n\nNot you? Nothing to worry about, just ignore this email.",
+                from_email=None,  # Use the default from settings
+                recipient_list=[email],
+                fail_silently=False,
+            )
             pass
         else:
             # Create an unverified user account
@@ -67,7 +75,13 @@ def register(request):
                     email=email,
                     password_hash=pwd_hash,
                 )
-                # TODO: send an email to the user with the verification link
+                send_mail(
+                    subject="Plancake - Email Verification",
+                    message=f"Welcome to Plancake!\n\nClick this link to verify your email:\n{BASE_URL}/verify-email?code={ver_code}\n\nNot you? Nothing to worry about, just ignore this email.",
+                    from_email=None,  # Use the default from settings
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
 
         return Response(
             {"message": ["An email has been sent to your address for verification."]},
@@ -214,7 +228,13 @@ def start_password_reset(request):
             PasswordResetToken.objects.create(
                 reset_token=reset_token, user_account=user
             )
-        # TODO: Send the email to the user
+        send_mail(
+            subject="Plancake - Reset Password",
+            message=f"Click this link to reset your password:\n{BASE_URL}/reset-password?token={reset_token}\n\nNot you? Nothing to worry about, just ignore this email.",
+            from_email=None,  # Use the default from settings
+            recipient_list=[email],
+            fail_silently=False,
+        )
     except UserAccount.DoesNotExist:
         pass  # Do not reveal if the email exists or not
     except Exception as e:
