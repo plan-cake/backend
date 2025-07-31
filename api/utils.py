@@ -3,6 +3,7 @@ import functools
 from rest_framework.response import Response
 
 from django.db import transaction
+from rest_framework.throttling import AnonRateThrottle
 
 from api.models import UserAccount, UserSession
 from api.settings import SESS_EXP_SECONDS, LONG_SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
@@ -22,6 +23,10 @@ def session_cleanup():
         is_extended=True,
         last_used__lt=datetime.now() - timedelta(seconds=LONG_SESS_EXP_SECONDS),
     ).delete()
+
+
+class GuestAccountCreationThrottle(AnonRateThrottle):
+    scope = "guest_account_creation"
 
 
 def require_auth(func):
@@ -95,6 +100,19 @@ def require_auth(func):
                     max_age=LONG_SESS_EXP_SECONDS,
                 )
             except UserSession.DoesNotExist:
+                # Check guest creation rate limit
+                throttle = GuestAccountCreationThrottle()
+                if not throttle.allow_request(request, None):
+                    return Response(
+                        {
+                            "error": {
+                                "general": [
+                                    f"Guest creation limit ({throttle.get_rate()}) reached. Make sure cookies are enabled for this site, and try again later."
+                                ]
+                            }
+                        },
+                        status=429,
+                    )
                 # Create a new guest user
                 try:
                     with transaction.atomic():
@@ -124,6 +142,19 @@ def require_auth(func):
                 print(e)
                 return GENERIC_ERR_RESPONSE
         else:
+            # Check guest creation rate limit
+            throttle = GuestAccountCreationThrottle()
+            if not throttle.allow_request(request, None):
+                return Response(
+                    {
+                        "error": {
+                            "general": [
+                                f"Guest creation limit ({throttle.get_rate()}) reached. Make sure cookies are enabled for this site, and try again later."
+                            ]
+                        }
+                    },
+                    status=429,
+                )
             # Create a guest user with an extended session
             try:
                 with transaction.atomic():
