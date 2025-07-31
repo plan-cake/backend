@@ -63,8 +63,8 @@ USE_TZ = False
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
-    # Rate limiting/throttling
     "DEFAULT_THROTTLE_RATES": {
+        "user_account_creation": "4/hour",
         "guest_account_creation": "2/hour",
     },
 }

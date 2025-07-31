@@ -1,6 +1,7 @@
 from rest_framework.decorators import api_view
 from rest_framework import serializers
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from django.db import transaction
 from django.core.mail import send_mail
@@ -22,7 +23,7 @@ from api.models import (
     PasswordResetToken,
     UserLogin,
 )
-from api.utils import validate_json_input, require_account_auth
+from api.utils import validate_json_input, require_account_auth, rate_limit
 from api.auth.utils import validate_password
 
 import bcrypt
@@ -34,7 +35,14 @@ class RegisterAccountSerializer(serializers.Serializer):
     password = serializers.CharField(required=True)
 
 
+class RegisterAccountThrottle(AnonRateThrottle):
+    scope = "user_account_creation"
+
+
 @api_view(["POST"])
+@rate_limit(
+    RegisterAccountThrottle, "Account creation limit reached ({rate}). Try again later."
+)
 @validate_json_input(RegisterAccountSerializer)
 def register(request):
     email = request.validated_data.get("email")
