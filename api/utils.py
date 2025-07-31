@@ -1,9 +1,9 @@
 from datetime import timedelta, datetime
 import functools
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from django.db import transaction
-from rest_framework.throttling import AnonRateThrottle
 
 from api.models import UserAccount, UserSession
 from api.settings import SESS_EXP_SECONDS, LONG_SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
@@ -299,6 +299,35 @@ def validate_query_param_input(serializer_class):
             if not serializer.is_valid():
                 return Response({"error": serializer.errors}, status=400)
             request.validated_data = serializer.validated_data
+            return func(request, *args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+def rate_limit(
+    throttle_class, error_message="Rate limit ({rate}) exceeded. Try again later."
+):
+    """
+    A decorator that takes a throttle class and limits the endpoint accordingly.
+
+    An optional message can be passed, which can include the `{rate}` placeholder to
+    dynamically insert the rate limit value.
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            throttle = throttle_class()
+            if not throttle.allow_request(request, None):
+                msg = error_message
+                if "{rate}" in msg:
+                    msg = msg.replace("{rate}", throttle.get_rate())
+                return Response(
+                    {"error": {"general": [msg]}},
+                    status=429,
+                )
             return func(request, *args, **kwargs)
 
         return wrapper
