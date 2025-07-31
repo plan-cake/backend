@@ -143,7 +143,12 @@ class LoginSerializer(serializers.Serializer):
     remember_me = serializers.BooleanField(default=False, required=False)
 
 
+class LoginThrottle(AnonRateThrottle):
+    scope = "login"
+
+
 @api_view(["POST"])
+@rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
 @validate_json_input(LoginSerializer)
 def login(request):
     email = request.validated_data.get("email")
