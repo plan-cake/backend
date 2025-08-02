@@ -8,6 +8,10 @@ from api.docs.utils import get_all_endpoints
 
 @api_view(["GET"])
 def get_docs(request):
+    """
+    Dynamically generates documentation for all API endpoints. Returns a list of endpoints
+    with their paths, documentation strings, and allowed HTTP methods.
+    """
     all_endpoints = get_all_endpoints()
     endpoints = []
     for pattern in all_endpoints:

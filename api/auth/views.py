@@ -44,6 +44,18 @@ class RegisterAccountThrottle(AnonRateThrottle):
 )
 @validate_json_input(RegisterAccountSerializer)
 def register(request):
+    """
+    Registers a new user account as an "unverified user" that cannot be used until the
+    email address is verified.
+
+    If the email address is available, it will send an email with a link to verify.
+
+    If the email address is already used for an unverified user, it will update the
+    verification code and send a new email.
+
+    If the email address is already used for an account and verified, it will let the user
+    know that via email.
+    """
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
 
@@ -115,6 +127,14 @@ class EmailVerifySerializer(serializers.Serializer):
 @api_view(["POST"])
 @validate_json_input(EmailVerifySerializer)
 def verify_email(request):
+    """
+    Verifies the email address of an unverified user account.
+
+    If the verification code is valid, it creates a verified user account with the
+    information given when initially registering.
+
+    This endpoint does NOT automatically log in the user after verifying.
+    """
     ver_code = request.validated_data.get("verification_code")
     try:
         # Remove expired verification codes
@@ -158,6 +178,12 @@ class LoginThrottle(AnonRateThrottle):
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
 @validate_json_input(LoginSerializer)
 def login(request):
+    """
+    Logs in a user account by creating a session token and setting it as a cookie.
+
+    If "remember_me" is true, the session token will have a significantly longer (but not
+    infinite) expiration time.
+    """
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
     remember_me = request.validated_data.get("remember_me")
@@ -203,6 +229,11 @@ class PasswordSerializer(serializers.Serializer):
 @api_view(["POST"])
 @validate_json_input(PasswordSerializer)
 def check_password(request):
+    """
+    Checks if the provided password meets the security criteria.
+
+    Returns a list of issues with the password if invalid.
+    """
     password = request.validated_data.get("password")
 
     if errors := validate_password(password):
@@ -215,9 +246,10 @@ def check_password(request):
 @require_account_auth
 def check_account_auth(request):
     """
-    Endpoint to check if the user is authenticated.
+    Checks if the client is authenticated with a user account.
 
-    In the future, this could also return data like settings and personalization.
+    In the future, this endpoint could be used to return user-personalized data like
+    settings or preferences.
     """
     return Response({"message": [f"Logged in as {request.user.email}."]}, status=200)
 
@@ -229,6 +261,12 @@ class EmailSerializer(serializers.Serializer):
 @api_view(["POST"])
 @validate_json_input(EmailSerializer)
 def start_password_reset(request):
+    """
+    Starts the password reset process by sending a password reset link to the specified
+    email.
+
+    If the email address is not associated with a user account, nothing will happen.
+    """
     email = request.validated_data.get("email")
     try:
         # Remove expired password reset tokens
@@ -284,6 +322,9 @@ class PasswordResetSerializer(serializers.Serializer):
 @api_view(["POST"])
 @validate_json_input(PasswordResetSerializer)
 def reset_password(request):
+    """
+    Resets the password for a user account given a valid password reset token.
+    """
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
 
@@ -332,6 +373,10 @@ def reset_password(request):
 
 @api_view(["POST"])
 def logout(request):
+    """
+    Logs out the currently-authenticated user account by deleting the session token in the
+    database and the cookie on the client.
+    """
     try:
         if token := request.COOKIES.get("account_sess_token"):
             UserSession.objects.filter(session_token=token).delete()
@@ -348,6 +393,9 @@ def logout(request):
 @require_account_auth
 @validate_json_input(PasswordSerializer)
 def delete_account(request):
+    """
+    Deletes the currently-authenticated user account after verifying the password.
+    """
     password = request.validated_data.get("password")
     user = request.user
     if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
