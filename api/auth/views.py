@@ -24,6 +24,7 @@ from api.settings import (
     LONG_SESS_EXP_SECONDS,
     PWD_RESET_EXP_SECONDS,
     SESS_EXP_SECONDS,
+    SEND_EMAILS,
 )
 from api.utils import rate_limit, require_account_auth, validate_json_input
 
@@ -59,14 +60,17 @@ def register(request):
 
         # Check if the email already exists
         if UserAccount.objects.filter(email=email).exists():
-            send_mail(
-                subject="Plancake - Email in Use",
-                message=f"Looks like your email was already used for a Plancake account.\n\nNot you? Nothing to worry about, just ignore this email.",
-                from_email=None,  # Use the default from settings
-                recipient_list=[email],
-                fail_silently=False,
-            )
-            pass
+            if SEND_EMAILS:
+                send_mail(
+                    subject="Plancake - Email in Use",
+                    message=f"Looks like your email was already used for a Plancake account.\n\nNot you? Nothing to worry about, just ignore this email.",
+                    from_email=None,  # Use the default from settings
+                    recipient_list=[email],
+                    fail_silently=False,
+                )
+            else:
+                # Just print a message
+                print(f"Email {email} in use!")
         else:
             # Create an unverified user account
             ver_code = str(uuid.uuid4())
@@ -81,6 +85,8 @@ def register(request):
                     email=email,
                     password_hash=pwd_hash,
                 )
+
+            if SEND_EMAILS:
                 send_mail(
                     subject="Plancake - Email Verification",
                     message=f"Welcome to Plancake!\n\nClick this link to verify your email:\n{BASE_URL}/verify-email?code={ver_code}\n\nNot you? Nothing to worry about, just ignore this email.",
@@ -88,6 +94,9 @@ def register(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
+            else:
+                # Just print the code
+                print(f"{email} registered as unverified with code: {ver_code}")
 
         return Response(
             {"message": ["An email has been sent to your address for verification."]},
@@ -239,13 +248,18 @@ def start_password_reset(request):
             PasswordResetToken.objects.create(
                 reset_token=reset_token, user_account=user
             )
-        send_mail(
-            subject="Plancake - Reset Password",
-            message=f"Click this link to reset your password:\n{BASE_URL}/reset-password?token={reset_token}\n\nNot you? Nothing to worry about, just ignore this email.",
-            from_email=None,  # Use the default from settings
-            recipient_list=[email],
-            fail_silently=False,
-        )
+        if SEND_EMAILS:
+            send_mail(
+                subject="Plancake - Reset Password",
+                message=f"Click this link to reset your password:\n{BASE_URL}/reset-password?token={reset_token}\n\nNot you? Nothing to worry about, just ignore this email.",
+                from_email=None,  # Use the default from settings
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        else:
+            # Just print the reset token
+            print(f"Password reset token for {email}: {reset_token}")
+
     except UserAccount.DoesNotExist:
         pass  # Do not reveal if the email exists or not
     except Exception as e:
