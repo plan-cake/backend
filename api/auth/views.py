@@ -1,33 +1,31 @@
-from rest_framework.decorators import api_view
+import uuid
+from datetime import datetime, timedelta
+
+import bcrypt
+from django.core.mail import send_mail
+from django.db import transaction
 from rest_framework import serializers
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from django.db import transaction
-from django.core.mail import send_mail
-
-from datetime import datetime, timedelta
-
-from api.settings import (
-    SESS_EXP_SECONDS,
-    LONG_SESS_EXP_SECONDS,
-    EMAIL_CODE_EXP_SECONDS,
-    PWD_RESET_EXP_SECONDS,
-    GENERIC_ERR_RESPONSE,
-    BASE_URL,
-)
-from api.models import (
-    UserAccount,
-    UnverifiedUserAccount,
-    UserSession,
-    PasswordResetToken,
-    UserLogin,
-)
-from api.utils import validate_json_input, require_account_auth, rate_limit
 from api.auth.utils import validate_password
-
-import bcrypt
-import uuid
+from api.models import (
+    PasswordResetToken,
+    UnverifiedUserAccount,
+    UserAccount,
+    UserLogin,
+    UserSession,
+)
+from api.settings import (
+    BASE_URL,
+    EMAIL_CODE_EXP_SECONDS,
+    GENERIC_ERR_RESPONSE,
+    LONG_SESS_EXP_SECONDS,
+    PWD_RESET_EXP_SECONDS,
+    SESS_EXP_SECONDS,
+)
+from api.utils import rate_limit, require_account_auth, validate_json_input
 
 
 class RegisterAccountSerializer(serializers.Serializer):

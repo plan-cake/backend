@@ -1,7 +1,7 @@
-import environ
 from pathlib import Path
-from rest_framework.response import Response
 
+import environ
+from rest_framework.response import Response
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

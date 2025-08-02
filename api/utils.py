@@ -1,14 +1,13 @@
-from datetime import timedelta, datetime
 import functools
+import uuid
+from datetime import datetime, timedelta
+
+from django.db import transaction
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from django.db import transaction
-
 from api.models import UserAccount, UserSession
-from api.settings import SESS_EXP_SECONDS, LONG_SESS_EXP_SECONDS, GENERIC_ERR_RESPONSE
-
-import uuid
+from api.settings import GENERIC_ERR_RESPONSE, LONG_SESS_EXP_SECONDS, SESS_EXP_SECONDS
 
 
 def session_cleanup():
