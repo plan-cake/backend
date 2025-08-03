@@ -67,11 +67,6 @@ def register(request):
     password = request.validated_data.get("password")
 
     try:
-        # Remove expired verification codes
-        UnverifiedUserAccount.objects.filter(
-            created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
-        ).delete()
-
         # Validate the password first
         if errors := validate_password(password):
             return Response({"error": {"password": errors}}, status=400)
@@ -93,12 +88,8 @@ def register(request):
         else:
             # Create an unverified user account
             ver_code = str(uuid.uuid4())
-            if UnverifiedUserAccount.objects.filter(email=email).exists():
-                # If the email was already used, update the verification code
-                UnverifiedUserAccount.objects.filter(email=email).update(
-                    verification_code=ver_code, created_at=datetime.now()
-                )
-            else:
+            with transaction.atomic():
+                UnverifiedUserAccount.objects.filter(email=email).delete()
                 UnverifiedUserAccount.objects.create(
                     verification_code=ver_code,
                     email=email,
