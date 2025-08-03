@@ -127,6 +127,49 @@ def register(request):
         return GENERIC_ERR_RESPONSE
 
 
+class EmailSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+
+
+@api_endpoint("POST")
+@validate_json_input(EmailSerializer)
+@validate_output(MessageOutputSerializer)
+def resend_register_email(request):
+    """
+    Attempts to resend the verification email for an unverified user account.
+
+    If the email address is either already used for a verified user account, or not
+    associated with an unverified user account, nothing will happen.
+    """
+    email = request.validated_data.get("email")
+
+    try:
+        # Remove expired verification codes
+        UnverifiedUserAccount.objects.filter(
+            created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
+        ).delete()
+        unverified_user = UnverifiedUserAccount.objects.get(email=email)
+        if SEND_EMAILS:
+            send_mail(
+                subject="Plancake - Email Verification",
+                message=f"Welcome to Plancake!\n\nClick this link to verify your email:\n{BASE_URL}/verify-email?code={unverified_user.verification_code}\n\nNot you? Nothing to worry about, just ignore this email.",
+                from_email=None,  # Use the default from settings
+                recipient_list=[email],
+                fail_silently=False,
+            )
+        else:
+            # Just print the verification code
+            print(f"Verification code for {email}: {unverified_user.verification_code}")
+
+    except UnverifiedUserAccount.DoesNotExist:
+        pass  # Do not reveal if the email exists or not
+    except Exception as e:
+        print(e)
+        return GENERIC_ERR_RESPONSE
+
+    return Response({"message": ["Verification email resent."]}, status=200)
+
+
 class EmailVerifySerializer(serializers.Serializer):
     verification_code = serializers.CharField(required=True)
 
@@ -263,10 +306,6 @@ def check_account_auth(request):
     settings or preferences.
     """
     return Response({"message": [f"Logged in as {request.user.email}."]}, status=200)
-
-
-class EmailSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
 
 
 @api_endpoint("POST")
