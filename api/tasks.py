@@ -2,8 +2,18 @@ from datetime import datetime, timedelta
 
 from celery import shared_task
 
-from api.models import UserAccount, UserSession
-from api.settings import LONG_SESS_EXP_SECONDS, SESS_EXP_SECONDS
+from api.models import (
+    PasswordResetToken,
+    UnverifiedUserAccount,
+    UserAccount,
+    UserSession,
+)
+from api.settings import (
+    EMAIL_CODE_EXP_SECONDS,
+    LONG_SESS_EXP_SECONDS,
+    PWD_RESET_EXP_SECONDS,
+    SESS_EXP_SECONDS,
+)
 
 
 def session_cleanup():
@@ -35,11 +45,21 @@ def guest_cleanup():
 
 
 def unverified_user_cleanup():
-    pass
+    """
+    Removes expired unverified users.
+    """
+    UnverifiedUserAccount.objects.filter(
+        created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
+    ).delete()
 
 
 def password_reset_token_cleanup():
-    pass
+    """
+    Removes expired password reset tokens.
+    """
+    PasswordResetToken.objects.filter(
+        created_at__lt=datetime.now() - timedelta(seconds=PWD_RESET_EXP_SECONDS)
+    ).delete()
 
 
 @shared_task
