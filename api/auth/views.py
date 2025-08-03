@@ -30,7 +30,12 @@ from api.utils import (
     rate_limit,
     require_account_auth,
     validate_json_input,
+    validate_output,
 )
+
+
+class MessageOutputSerializer(serializers.Serializer):
+    message = serializers.ListField(child=serializers.CharField())
 
 
 class RegisterAccountSerializer(serializers.Serializer):
@@ -47,6 +52,7 @@ class RegisterAccountThrottle(AnonRateThrottle):
     RegisterAccountThrottle, "Account creation limit reached ({rate}). Try again later."
 )
 @validate_json_input(RegisterAccountSerializer)
+@validate_output(MessageOutputSerializer)
 def register(request):
     """
     Registers a new user account as an "unverified user" that cannot be used until the
@@ -130,6 +136,7 @@ class EmailVerifySerializer(serializers.Serializer):
 
 @api_endpoint("POST")
 @validate_json_input(EmailVerifySerializer)
+@validate_output(MessageOutputSerializer)
 def verify_email(request):
     """
     Verifies the email address of an unverified user account.
@@ -181,6 +188,7 @@ class LoginThrottle(AnonRateThrottle):
 @api_endpoint("POST")
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
 @validate_json_input(LoginSerializer)
+@validate_output(MessageOutputSerializer)
 def login(request):
     """
     Logs in a user account by creating a session token and setting it as a cookie.
@@ -232,6 +240,7 @@ class PasswordSerializer(serializers.Serializer):
 
 @api_endpoint("POST")
 @validate_json_input(PasswordSerializer)
+@validate_output(MessageOutputSerializer)
 def check_password(request):
     """
     Checks if the provided password meets the security criteria.
@@ -248,6 +257,7 @@ def check_password(request):
 
 @api_endpoint("GET")
 @require_account_auth
+@validate_output(MessageOutputSerializer)
 def check_account_auth(request):
     """
     Checks if the client is authenticated with a user account.
@@ -264,6 +274,7 @@ class EmailSerializer(serializers.Serializer):
 
 @api_endpoint("POST")
 @validate_json_input(EmailSerializer)
+@validate_output(MessageOutputSerializer)
 def start_password_reset(request):
     """
     Starts the password reset process by sending a password reset link to the specified
@@ -325,6 +336,7 @@ class PasswordResetSerializer(serializers.Serializer):
 
 @api_endpoint("POST")
 @validate_json_input(PasswordResetSerializer)
+@validate_output(MessageOutputSerializer)
 def reset_password(request):
     """
     Resets the password for a user account given a valid password reset token.
@@ -376,6 +388,7 @@ def reset_password(request):
 
 
 @api_endpoint("POST")
+@validate_output(MessageOutputSerializer)
 def logout(request):
     """
     Logs out the currently-authenticated user account by deleting the session token in the
@@ -396,6 +409,7 @@ def logout(request):
 @api_endpoint("POST")
 @require_account_auth
 @validate_json_input(PasswordSerializer)
+@validate_output(MessageOutputSerializer)
 def delete_account(request):
     """
     Deletes the currently-authenticated user account after verifying the password.
