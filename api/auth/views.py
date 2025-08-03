@@ -321,6 +321,9 @@ def start_password_reset(request):
     email.
 
     If the email address is not associated with a user account, nothing will happen.
+
+    To resend the email, this endpoint can be called again with the same input. A new
+    reset token will be generated and the old one invalidated.
     """
     email = request.validated_data.get("email")
     try:
