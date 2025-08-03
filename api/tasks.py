@@ -6,15 +6,12 @@ from api.models import UserAccount, UserSession
 from api.settings import LONG_SESS_EXP_SECONDS, SESS_EXP_SECONDS
 
 
-@shared_task
 def session_cleanup():
     """
-    Cleans up user sessions that are older than the expiration time for their
-    corresponding type.
+    Cleans up sessions that are older than the expiration time for their corresponding
+    type.
 
-    Guests without sessions will also be removed.
-
-    Session lifetime is defined in `settings.py`.
+    Session lifetime is defined for each type in `settings.py`.
     """
     # Regular sessions
     UserSession.objects.filter(
@@ -29,5 +26,28 @@ def session_cleanup():
     # These queries are probably faster separately, since they are individually able to
     # take advantage of the indexes.
 
-    # After removing inactive sessions, then remove guests that no longer have sessions.
+
+def guest_cleanup():
+    """
+    Removes guest users that no longer have any sessions.
+    """
     UserAccount.objects.filter(is_guest=True, session_tokens__isnull=True).delete()
+
+
+def unverified_user_cleanup():
+    pass
+
+
+def password_reset_token_cleanup():
+    pass
+
+
+@shared_task
+def daily_cleanup():
+    """
+    Cleans up expired sessions, guests, unverified users, and password reset tokens.
+    """
+    session_cleanup()
+    guest_cleanup()
+    unverified_user_cleanup()
+    password_reset_token_cleanup()
