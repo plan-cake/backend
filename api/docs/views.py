@@ -2,7 +2,7 @@ import inspect
 
 from rest_framework.response import Response
 
-from api.docs.utils import get_all_endpoints
+from api.docs.utils import get_all_endpoints, get_serializer_format
 from api.utils import APIMetadata, api_endpoint
 
 
@@ -25,7 +25,7 @@ def get_docs(request):
                 "method": metadata.method,
                 "description": desc if desc else "No description available.",
                 "input_type": metadata.input_type,
-                "input_format": "None",
+                "input_format": get_serializer_format(metadata.input_serializer_class),
                 "min_auth_required": metadata.min_auth_required,
                 "rate_limit": metadata.rate_limit,
             }
