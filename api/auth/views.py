@@ -140,6 +140,10 @@ def resend_register_email(request):
 
     If the email address is either already used for a verified user account, or not
     associated with an unverified user account, nothing will happen.
+
+    Ideally, the frontend would not allow the user to call this endpoint if the
+    verification code would already have expired. Instead, the user should be prompted to
+    register again.
     """
     email = request.validated_data.get("email")
 
