@@ -42,6 +42,12 @@ def get_metadata(func):
 
 
 def api_endpoint(method):
+    """
+    Defines an API endpoint that uses a single method type.
+
+    **This must be the outer-most decorator for the view function to work properly.**
+    """
+
     def decorator(func):
         drf_view = api_view([method])(func)
         metadata = get_metadata(func)
