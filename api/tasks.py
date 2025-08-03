@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 
 from celery import shared_task
+from django.db.models import Q
 
 from api.models import (
     PasswordResetToken,
@@ -23,18 +24,16 @@ def session_cleanup():
 
     Session lifetime is defined for each type in `settings.py`.
     """
-    # Regular sessions
     UserSession.objects.filter(
-        is_extended=False,
-        last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
+        (
+            Q(is_extended=True)
+            & Q(last_used__lt=datetime.now() - timedelta(seconds=LONG_SESS_EXP_SECONDS))
+        )
+        | (
+            Q(is_extended=False)
+            & Q(last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS))
+        )
     ).delete()
-    # Extended sessions
-    UserSession.objects.filter(
-        is_extended=True,
-        last_used__lt=datetime.now() - timedelta(seconds=LONG_SESS_EXP_SECONDS),
-    ).delete()
-    # These queries are probably faster separately, since they are individually able to
-    # take advantage of the indexes.
 
 
 def guest_cleanup():
