@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from django.db import transaction
+from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
@@ -37,6 +38,15 @@ def get_metadata(func):
     if not hasattr(func, "metadata"):
         func.metadata = APIMetadata()
     return func.metadata
+
+
+def api_endpoint(method):
+    def decorator(func):
+        drf_view = api_view([method])(func)
+        drf_view.metadata = get_metadata(func)
+        return drf_view
+
+    return decorator
 
 
 def session_cleanup():

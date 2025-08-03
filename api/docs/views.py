@@ -1,13 +1,12 @@
 import inspect
 
-from rest_framework.decorators import api_view
 from rest_framework.response import Response
 
 from api.docs.utils import get_all_endpoints
-from api.utils import APIMetadata
+from api.utils import APIMetadata, api_endpoint
 
 
-@api_view(["GET"])
+@api_endpoint("GET")
 def get_docs(request):
     """
     Dynamically generates documentation for all API endpoints. Returns a list of endpoints
