@@ -379,7 +379,9 @@ def validate_output(serializer_class):
                     return response
                 else:
                     print(serializer.errors)
-            return GENERIC_ERR_RESPONSE
+                    return GENERIC_ERR_RESPONSE
+            else:
+                return response
 
         get_metadata(wrapper).output_serializer_class = serializer_class
         return wrapper
