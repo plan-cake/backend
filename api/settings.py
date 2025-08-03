@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import environ
+from celery.schedules import crontab
 from rest_framework.response import Response
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -92,3 +93,12 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 SEND_EMAILS = env.bool("SEND_EMAILS", default=False)
 
 BASE_URL = env("BASE_URL")
+
+# Automated tasks
+CELERY_BEAT_SCHEDULE = {
+    "session_cleanup": {
+        "task": "api.tasks.session_cleanup",
+        "schedule": crontab(hour=0, minute=0),  # Every day at midnight
+    },
+}
+CELERY_BROKER_URL = "redis://localhost:6379/0"
