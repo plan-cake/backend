@@ -26,16 +26,13 @@ from api.settings import (
     SESS_EXP_SECONDS,
 )
 from api.utils import (
+    MessageOutputSerializer,
     api_endpoint,
     rate_limit,
     require_account_auth,
     validate_json_input,
     validate_output,
 )
-
-
-class MessageOutputSerializer(serializers.Serializer):
-    message = serializers.ListField(child=serializers.CharField())
 
 
 class RegisterAccountSerializer(serializers.Serializer):

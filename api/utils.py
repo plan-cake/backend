@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from django.db import transaction
+from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -360,6 +361,10 @@ def validate_query_param_input(serializer_class):
         return wrapper
 
     return decorator
+
+
+class MessageOutputSerializer(serializers.Serializer):
+    message = serializers.ListField(child=serializers.CharField())
 
 
 def validate_output(serializer_class):
