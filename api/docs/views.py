@@ -11,29 +11,31 @@ from api.utils import APIMetadata
 def get_docs(request):
     """
     Dynamically generates documentation for all API endpoints. Returns a list of endpoints
-    with their paths, documentation strings, and allowed HTTP methods.
+    with their paths, allowed methods, descriptions, input specifications, authentication
+    requirements, and rate limits.
     """
     all_endpoints = get_all_endpoints()
     endpoints = []
     for pattern in all_endpoints:
         view = pattern.callback
-        doc = inspect.getdoc(view)  # Used for reliability instead of getattr
+        desc = inspect.getdoc(view)  # Used for reliability instead of getattr
         view_class = getattr(view, "view_class", "oops")
         metadata = getattr(view, "metadata", APIMetadata())
-        method = "GET"
+        method = "Any"
         if not isinstance(view_class, str):
             methods = [
                 method.upper()
                 for method in view_class.http_method_names
                 if method != "options"
             ]
-            method = methods[0] if methods else "GET"
+            method = methods[0] if methods else "Any"
         endpoints.append(
             {
                 "path": "/" + str(pattern.pattern),
-                "doc": doc if doc else "No documentation available.",
                 "method": method,
+                "description": desc if desc else "No description available.",
                 "input_type": metadata.input_type,
+                "input_format": "None",
                 "min_auth_required": metadata.min_auth_required,
                 "rate_limit": metadata.rate_limit,
             }
