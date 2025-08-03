@@ -1,3 +1,5 @@
+import copy
+
 from django.urls import get_resolver
 
 
@@ -9,8 +11,9 @@ def get_endpoints(urlpatterns, prefix=""):
                 pattern.url_patterns, prefix + str(pattern.pattern)
             )
         else:
-            pattern.pattern = prefix + str(pattern.pattern)
-            endpoints.append(pattern)
+            pattern_copy = copy.copy(pattern)
+            pattern_copy.pattern = prefix + str(pattern.pattern)
+            endpoints.append(pattern_copy)
     return endpoints
 
 
