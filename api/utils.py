@@ -25,6 +25,7 @@ class APIMetadata:
         self.method = None
         self.input_type = None
         self.input_serializer_class = None
+        self.output_serializer_class = None
         self.rate_limit = None
         self.min_auth_required = None
 
@@ -375,6 +376,7 @@ def validate_output(serializer_class):
                     print(serializer.errors)
             return GENERIC_ERR_RESPONSE
 
+        get_metadata(wrapper).output_serializer_class = serializer_class
         return wrapper
 
     return decorator

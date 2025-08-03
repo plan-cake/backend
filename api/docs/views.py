@@ -13,6 +13,7 @@ class EndpointSerializer(serializers.Serializer):
     description = serializers.CharField()
     input_type = serializers.CharField(allow_null=True)
     input_format = serializers.JSONField(allow_null=True)
+    output_format = serializers.JSONField(allow_null=True)
     min_auth_required = serializers.CharField(allow_null=True)
     rate_limit = serializers.CharField(allow_null=True)
 
@@ -42,6 +43,9 @@ def get_docs(request):
                 "description": desc if desc else "No description available.",
                 "input_type": metadata.input_type,
                 "input_format": get_serializer_format(metadata.input_serializer_class),
+                "output_format": get_serializer_format(
+                    metadata.output_serializer_class, include_required=False
+                ),
                 "min_auth_required": metadata.min_auth_required,
                 "rate_limit": metadata.rate_limit,
             }
