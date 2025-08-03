@@ -20,18 +20,19 @@ def get_docs(request):
         doc = inspect.getdoc(view)  # Used for reliability instead of getattr
         view_class = getattr(view, "view_class", "oops")
         metadata = getattr(view, "metadata", APIMetadata())
-        methods = []
+        method = "GET"
         if not isinstance(view_class, str):
             methods = [
                 method.upper()
                 for method in view_class.http_method_names
                 if method != "options"
             ]
+            method = methods[0] if methods else "GET"
         endpoints.append(
             {
                 "path": "/" + str(pattern.pattern),
                 "doc": doc if doc else "No documentation available.",
-                "methods": methods,
+                "method": method,
                 "input_type": metadata.input_type,
                 "min_auth_required": metadata.min_auth_required,
                 "rate_limit": metadata.rate_limit,
