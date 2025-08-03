@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from api.utils import require_auth
 
 
-@api_view(["GET"])
 @require_auth
+@api_view(["GET"])
 def index(request):
     """
     Does nothing. This endpoint exists just to test various functionalities throughout

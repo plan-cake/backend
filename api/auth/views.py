@@ -38,11 +38,11 @@ class RegisterAccountThrottle(AnonRateThrottle):
     scope = "user_account_creation"
 
 
-@api_view(["POST"])
 @rate_limit(
     RegisterAccountThrottle, "Account creation limit reached ({rate}). Try again later."
 )
 @validate_json_input(RegisterAccountSerializer)
+@api_view(["POST"])
 def register(request):
     """
     Registers a new user account as an "unverified user" that cannot be used until the
@@ -124,8 +124,8 @@ class EmailVerifySerializer(serializers.Serializer):
     verification_code = serializers.CharField(required=True)
 
 
-@api_view(["POST"])
 @validate_json_input(EmailVerifySerializer)
+@api_view(["POST"])
 def verify_email(request):
     """
     Verifies the email address of an unverified user account.
@@ -174,9 +174,9 @@ class LoginThrottle(AnonRateThrottle):
     scope = "login"
 
 
-@api_view(["POST"])
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
 @validate_json_input(LoginSerializer)
+@api_view(["POST"])
 def login(request):
     """
     Logs in a user account by creating a session token and setting it as a cookie.
@@ -226,8 +226,8 @@ class PasswordSerializer(serializers.Serializer):
     password = serializers.CharField(required=True)
 
 
-@api_view(["POST"])
 @validate_json_input(PasswordSerializer)
+@api_view(["POST"])
 def check_password(request):
     """
     Checks if the provided password meets the security criteria.
@@ -242,8 +242,8 @@ def check_password(request):
     return Response({"message": ["Password is valid."]})
 
 
-@api_view(["GET"])
 @require_account_auth
+@api_view(["GET"])
 def check_account_auth(request):
     """
     Checks if the client is authenticated with a user account.
@@ -258,8 +258,8 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
 
-@api_view(["POST"])
 @validate_json_input(EmailSerializer)
+@api_view(["POST"])
 def start_password_reset(request):
     """
     Starts the password reset process by sending a password reset link to the specified
@@ -319,8 +319,8 @@ class PasswordResetSerializer(serializers.Serializer):
     new_password = serializers.CharField(required=True)
 
 
-@api_view(["POST"])
 @validate_json_input(PasswordResetSerializer)
+@api_view(["POST"])
 def reset_password(request):
     """
     Resets the password for a user account given a valid password reset token.
@@ -389,9 +389,9 @@ def logout(request):
     return response
 
 
-@api_view(["POST"])
 @require_account_auth
 @validate_json_input(PasswordSerializer)
+@api_view(["POST"])
 def delete_account(request):
     """
     Deletes the currently-authenticated user account after verifying the password.

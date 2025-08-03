@@ -7,7 +7,36 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.models import UserAccount, UserSession
-from api.settings import GENERIC_ERR_RESPONSE, LONG_SESS_EXP_SECONDS, SESS_EXP_SECONDS
+from api.settings import (
+    GENERIC_ERR_RESPONSE,
+    LONG_SESS_EXP_SECONDS,
+    REST_FRAMEWORK,
+    SESS_EXP_SECONDS,
+)
+
+
+class APIMetadata:
+    """
+    Holds metadata to be used for documentation.
+    """
+
+    def __init__(self):
+        self.input_type = None
+        self.input_serializer_class = None
+        self.rate_limit = None
+        self.min_auth_required = None
+
+
+def get_metadata(func):
+    """
+    For use with documentation.
+
+    Returns the APIMetadata class for the provided function, to be added to. If it doesn't
+    exist, one will be created.
+    """
+    if not hasattr(func, "metadata"):
+        func.metadata = APIMetadata()
+    return func.metadata
 
 
 def session_cleanup():
@@ -190,6 +219,7 @@ def require_auth(func):
             response.delete_cookie("account_sess_token")
         return response
 
+    get_metadata(wrapper).min_auth_required = "Guest"
     return wrapper
 
 
@@ -247,6 +277,7 @@ def require_account_auth(func):
         else:
             return BAD_AUTH_RESPONSE
 
+    get_metadata(wrapper).min_auth_required = "User Account"
     return wrapper
 
 
@@ -266,6 +297,9 @@ def validate_json_input(serializer_class):
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
+        metadata = get_metadata(wrapper)
+        metadata.input_type = "JSON"
+        metadata.input_serializer_class = serializer_class
         return wrapper
 
     return decorator
@@ -300,9 +334,16 @@ def validate_query_param_input(serializer_class):
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
+        metadata = get_metadata(wrapper)
+        metadata.input_type = "Query Parameters"
+        metadata.input_serializer_class = serializer_class
         return wrapper
 
     return decorator
+
+
+def get_rate_limit(scope):
+    return REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}).get(scope, None)
 
 
 def rate_limit(
@@ -329,6 +370,7 @@ def rate_limit(
                 )
             return func(request, *args, **kwargs)
 
+        get_metadata(wrapper).rate_limit = get_rate_limit(throttle_class.scope)
         return wrapper
 
     return decorator
