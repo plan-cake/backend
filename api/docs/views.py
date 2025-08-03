@@ -1,12 +1,28 @@
 import inspect
 
+from rest_framework import serializers
 from rest_framework.response import Response
 
 from api.docs.utils import get_all_endpoints, get_serializer_format
-from api.utils import APIMetadata, api_endpoint
+from api.utils import APIMetadata, api_endpoint, validate_output
+
+
+class EndpointSerializer(serializers.Serializer):
+    path = serializers.CharField()
+    method = serializers.CharField()
+    description = serializers.CharField()
+    input_type = serializers.CharField(allow_null=True)
+    input_format = serializers.JSONField(allow_null=True)
+    min_auth_required = serializers.CharField(allow_null=True)
+    rate_limit = serializers.CharField(allow_null=True)
+
+
+class DocsSerializer(serializers.Serializer):
+    data = serializers.ListField(child=EndpointSerializer())
 
 
 @api_endpoint("GET")
+@validate_output(DocsSerializer)
 def get_docs(request):
     """
     Dynamically generates documentation for all API endpoints. Returns a list of endpoints

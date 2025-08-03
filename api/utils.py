@@ -361,6 +361,25 @@ def validate_query_param_input(serializer_class):
     return decorator
 
 
+def validate_output(serializer_class):
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(request, *args, **kwargs):
+            response = func(request, *args, **kwargs)
+            if isinstance(response, Response) and 200 <= response.status_code < 300:
+                serializer = serializer_class(data=response.data)
+                if serializer.is_valid():
+                    response.data = serializer.validated_data
+                    return response
+                else:
+                    print(serializer.errors)
+            return GENERIC_ERR_RESPONSE
+
+        return wrapper
+
+    return decorator
+
+
 def get_rate_limit(scope):
     return REST_FRAMEWORK.get("DEFAULT_THROTTLE_RATES", {}).get(scope, None)
 
