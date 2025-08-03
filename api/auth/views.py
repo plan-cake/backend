@@ -337,6 +337,8 @@ class PasswordResetSerializer(serializers.Serializer):
 def reset_password(request):
     """
     Resets the password for a user account given a valid password reset token.
+
+    Also removes all currently active sessions as a security measure.
     """
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
@@ -372,6 +374,9 @@ def reset_password(request):
             ).decode()
             user.save()
             reset_token_obj.delete()  # Make sure to remove the reset token after use
+
+            # Remove all active sessions for the user
+            UserSession.objects.filter(user_account=user).delete()
 
     except PasswordResetToken.DoesNotExist:
         return Response(
