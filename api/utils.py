@@ -22,6 +22,7 @@ class APIMetadata:
     """
 
     def __init__(self):
+        self.method = None
         self.input_type = None
         self.input_serializer_class = None
         self.rate_limit = None
@@ -43,7 +44,9 @@ def get_metadata(func):
 def api_endpoint(method):
     def decorator(func):
         drf_view = api_view([method])(func)
-        drf_view.metadata = get_metadata(func)
+        metadata = get_metadata(func)
+        metadata.method = method
+        drf_view.metadata = metadata
         return drf_view
 
     return decorator
