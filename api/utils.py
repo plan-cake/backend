@@ -3,6 +3,7 @@ import uuid
 from datetime import datetime, timedelta
 
 from django.db import transaction
+from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -60,18 +61,27 @@ def api_endpoint(method):
     return decorator
 
 
-def session_cleanup():
-    # Delete sessions where last_used is further than the expiration time
-    # Non-extended sessions
-    UserSession.objects.filter(
-        is_extended=False,
-        last_used__lt=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS),
-    ).delete()
-    # Extended sessions
-    UserSession.objects.filter(
-        is_extended=True,
-        last_used__lt=datetime.now() - timedelta(seconds=LONG_SESS_EXP_SECONDS),
-    ).delete()
+def get_session(token):
+    """
+    Retrieves a session by its token, ensuring it is still valid.
+    """
+    return (
+        UserSession.objects.filter(session_token=token)
+        .filter(
+            (
+                Q(is_extended=True)
+                & Q(
+                    last_used__gte=datetime.now()
+                    - timedelta(seconds=LONG_SESS_EXP_SECONDS)
+                )
+            )
+            | (
+                Q(is_extended=False)
+                & Q(last_used__gte=datetime.now() - timedelta(seconds=SESS_EXP_SECONDS))
+            )
+        )
+        .first()
+    )
 
 
 class GuestAccountCreationThrottle(AnonRateThrottle):
@@ -97,10 +107,11 @@ def require_auth(func):
         acct_sess_expired = False
         if acct_token:
             try:
-                session_cleanup()
-
                 with transaction.atomic():
-                    session = UserSession.objects.get(session_token=acct_token)
+                    session = get_session(acct_token)
+                    if not session:
+                        # To break out of the rest of the logic
+                        raise UserSession.DoesNotExist
                     session.save()  # To update last_used to now
 
                 # At this point the account is authenticated
@@ -134,7 +145,9 @@ def require_auth(func):
             # Make sure the guest session token exists (it should)
             try:
                 with transaction.atomic():
-                    session = UserSession.objects.get(session_token=guest_token)
+                    session = get_session(guest_token)
+                    if not session:
+                        raise UserSession.DoesNotExist
                     session.save()  # Update last_used
 
                 request.user = session.user_account
@@ -266,10 +279,11 @@ def require_account_auth(func):
 
         if acct_token:
             try:
-                session_cleanup()
 
                 with transaction.atomic():
-                    session = UserSession.objects.get(session_token=acct_token)
+                    session = get_session(acct_token)
+                    if not session:
+                        raise UserSession.DoesNotExist
                     session.save()  # To update last_used to now
 
                 # At this point the account is authenticated
