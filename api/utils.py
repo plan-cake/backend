@@ -319,7 +319,7 @@ def validate_json_input(serializer_class):
             return func(request, *args, **kwargs)
 
         metadata = get_metadata(wrapper)
-        metadata.input_type = "JSON"
+        metadata.input_type = "JSON Body"
         metadata.input_serializer_class = serializer_class
         return wrapper
 
