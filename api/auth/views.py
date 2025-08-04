@@ -30,6 +30,7 @@ from api.utils import (
     api_endpoint,
     rate_limit,
     require_account_auth,
+    require_auth,
     validate_json_input,
     validate_output,
 )
@@ -226,6 +227,7 @@ class LoginThrottle(AnonRateThrottle):
 
 @api_endpoint("POST")
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
+@require_auth  # Just to check if the user is already logged in to a user account
 @validate_json_input(LoginSerializer)
 @validate_output(MessageOutputSerializer)
 def login(request):
@@ -235,6 +237,12 @@ def login(request):
     If "remember_me" is true, the session token will have a significantly longer (but not
     infinite) expiration time.
     """
+    is_logged_in = request.user.is_guest is False
+    if is_logged_in:
+        return Response(
+            {"error": {"general": ["You are already logged in."]}}, status=400
+        )
+
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
     remember_me = request.validated_data.get("remember_me")
