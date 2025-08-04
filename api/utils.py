@@ -377,6 +377,56 @@ def validate_query_param_input(serializer_class):
     return decorator
 
 
+def validate_error_format(data, input_serializer_class):
+    """
+    A helper function to make sure that error messages are returned in whatever crazy
+    format I decided to use for this project.
+
+    Expected format:
+    {
+        "error": {
+            "general/[input serializer field name]": [
+                "Error message",
+                ...
+            ],
+            ...
+        }
+    }
+    """
+    if not isinstance(data, dict):
+        return False
+
+    if "error" not in data or not isinstance(data["error"], dict):
+        return False
+
+    if input_serializer_class:
+        for field_name, value in data["error"].items():
+            if field_name not in input_serializer_class().fields:
+                if field_name != "general":
+                    print(
+                        f"Error: {field_name} must be a field name from the input serializer."
+                    )
+                    return False
+            if not isinstance(value, list):
+                print(f"Error: {field_name} must be a list.")
+                return False
+            if not all(isinstance(item, str) for item in value):
+                print(f"Error: All items in {field_name} must be strings.")
+                return False
+    else:
+        for field_name, value in data["error"].items():
+            if field_name != "general":
+                print(
+                    f"Error: {field_name} must be named 'general' if no input serializer is provided."
+                )
+                return False
+            if not isinstance(value, list):
+                print(f"Error: {field_name} must be a list.")
+                return False
+
+    return True
+
+
 class MessageOutputSerializer(serializers.Serializer):
     message = serializers.ListField(child=serializers.CharField())
 
@@ -386,16 +436,26 @@ def validate_output(serializer_class):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
             response = func(request, *args, **kwargs)
-            if isinstance(response, Response) and 200 <= response.status_code < 300:
-                serializer = serializer_class(data=response.data)
-                if serializer.is_valid():
-                    response.data = serializer.validated_data
-                    return response
+            if isinstance(response, Response):
+                if 200 <= response.status_code < 300:
+                    serializer = serializer_class(data=response.data)
+                    if serializer.is_valid():
+                        response.data = serializer.validated_data
+                        return response
+                    else:
+                        print(serializer.errors)
+                        return GENERIC_ERR_RESPONSE
                 else:
-                    print(serializer.errors)
-                    return GENERIC_ERR_RESPONSE
+                    if not validate_error_format(
+                        response.data, get_metadata(wrapper).input_serializer_class
+                    ):
+                        # The error format validator will print a message
+                        return GENERIC_ERR_RESPONSE
+                    return response
             else:
-                return response
+                # Something is REALLY wrong
+                print("Response is not a valid Response object.")
+                return GENERIC_ERR_RESPONSE
 
         get_metadata(wrapper).output_serializer_class = serializer_class
         return wrapper
