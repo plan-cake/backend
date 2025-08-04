@@ -330,23 +330,14 @@ def start_password_reset(request):
     """
     email = request.validated_data.get("email")
     try:
-        # Remove expired password reset tokens
-        PasswordResetToken.objects.filter(
-            created_at__lt=datetime.now() - timedelta(seconds=PWD_RESET_EXP_SECONDS)
-        ).delete()
-
         user = UserAccount.objects.get(email=email)
         reset_token = str(uuid.uuid4())
-        if PasswordResetToken.objects.filter(user_account=user).exists():
-            # If the user already has a reset token, update it
-            PasswordResetToken.objects.filter(user_account=user).update(
-                reset_token=reset_token, created_at=datetime.now()
-            )
-        else:
-            # Create a new password reset token
+        with transaction.atomic():
+            PasswordResetToken.objects.filter(user_account=user).delete()
             PasswordResetToken.objects.create(
                 reset_token=reset_token, user_account=user
             )
+
         if SEND_EMAILS:
             send_mail(
                 subject="Plancake - Reset Password",
@@ -396,13 +387,12 @@ def reset_password(request):
         return Response({"error": {"new_password": errors}}, status=400)
 
     try:
-        # Remove expired password reset tokens
-        PasswordResetToken.objects.filter(
-            created_at__lt=datetime.now() - timedelta(seconds=PWD_RESET_EXP_SECONDS)
-        ).delete()
-
         with transaction.atomic():
-            reset_token_obj = PasswordResetToken.objects.get(reset_token=reset_token)
+            reset_token_obj = PasswordResetToken.objects.get(
+                reset_token=reset_token,
+                created_at__gte=datetime.now()
+                - timedelta(seconds=PWD_RESET_EXP_SECONDS),
+            )
             user = reset_token_obj.user_account
 
             # Check if the new password is actually new
