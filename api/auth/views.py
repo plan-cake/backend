@@ -315,7 +315,15 @@ def check_account_auth(request):
     return Response({"message": [f"Logged in as {request.user.email}."]}, status=200)
 
 
+class PasswordResetThrottle(AnonRateThrottle):
+    scope = "password_reset"
+
+
 @api_endpoint("POST")
+@rate_limit(
+    PasswordResetThrottle,
+    "Password reset limit reached ({rate}). Try again later.",
+)
 @validate_json_input(EmailSerializer)
 @validate_output(MessageOutputSerializer)
 def start_password_reset(request):

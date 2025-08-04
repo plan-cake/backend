@@ -69,6 +69,7 @@ REST_FRAMEWORK = {
         "resend_email": "3/hour",
         "guest_account_creation": "2/hour",
         "login": "10/hour",
+        "password_reset": "3/hour",
     },
 }
 
