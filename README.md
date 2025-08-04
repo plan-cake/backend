@@ -3,7 +3,7 @@
 The API for the scheduling platform *plancake*.
 
 ## Project Setup
-*(Run commands from the root directory)*
+*(Run all commands from the root directory)*
 
 - Set up a Python virtual environment (optional, but highly recommended)
 - Install packages with `pip install -r requirements.txt`
@@ -11,10 +11,12 @@ The API for the scheduling platform *plancake*.
 
 ### `.env` File
 Copy the contents of `example.env` into a new file called `.env` in the same directory.
-- Replace all the fields prefixed with `DB_` with the relevant information for your database
+- Replace fields with relevant information for your environment
+    - `DB_`-prefixed variables are for database authentication info
+    - `AWS_SES_`-prefixed variables, `DEFAULT_FROM_EMAIL`, and `BASE_URL` are only needed if `SEND_EMAILS` is set to `True`
 
 ### Database Migrations
-The project contains a database model that determines the structure of the database. When it gets changed, Django's "migrations" feature keeps all development databases up to date on these changes.
+The project contains a database model that determines the structure of the connected database. When it gets changed, Django's "migrations" feature keeps development databases up to date on these changes.
 - Apply these migrations with `python manage.py migrate` when you first set up the project
 - Make sure to also run this command whenever you pull changes from another branch
 
