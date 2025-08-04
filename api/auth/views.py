@@ -139,11 +139,10 @@ def resend_register_email(request):
     email = request.validated_data.get("email")
 
     try:
-        # Remove expired verification codes
-        UnverifiedUserAccount.objects.filter(
-            created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
-        ).delete()
-        unverified_user = UnverifiedUserAccount.objects.get(email=email)
+        unverified_user = UnverifiedUserAccount.objects.get(
+            email=email,
+            created_at__gte=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS),
+        )
         if SEND_EMAILS:
             send_mail(
                 subject="Plancake - Email Verification",
@@ -183,15 +182,13 @@ def verify_email(request):
     """
     ver_code = request.validated_data.get("verification_code")
     try:
-        # Remove expired verification codes
-        UnverifiedUserAccount.objects.filter(
-            created_at__lt=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS)
-        ).delete()
-
-        unverified_user = UnverifiedUserAccount.objects.get(verification_code=ver_code)
+        unverified_user = UnverifiedUserAccount.objects.get(
+            verification_code=ver_code,
+            created_at__gte=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS),
+        )
         with transaction.atomic():
             # Create the user account
-            new_user = UserAccount.objects.create(
+            UserAccount.objects.create(
                 email=unverified_user.email,
                 password_hash=unverified_user.password_hash,
                 is_guest=False,
