@@ -93,8 +93,8 @@ def require_auth(func):
     A decorator to check if the user is authenticated (either with an account or as a
     guest) based on their cookies.
 
-    If the user is not authenticated, a guest account will be created for them. If the guest
-    account/session does not exist, a new one will be created.
+    If the user is not authenticated, a guest account will be created for them. If the
+    supplied guest account/session does not exist, a new one will be created.
 
     The `user` object is made available in the `request` argument after authentication.
 
