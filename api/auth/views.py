@@ -122,7 +122,14 @@ class EmailSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
 
 
+class ResendEmailThrottle(AnonRateThrottle):
+    scope = "resend_email"
+
+
 @api_endpoint("POST")
+@rate_limit(
+    ResendEmailThrottle, "Resend email limit reached ({rate}). Try again later."
+)
 @validate_json_input(EmailSerializer)
 @validate_output(MessageOutputSerializer)
 def resend_register_email(request):

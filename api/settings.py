@@ -66,6 +66,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
         "user_account_creation": "4/hour",
+        "resend_email": "3/hour",
         "guest_account_creation": "2/hour",
         "login": "10/hour",
     },
