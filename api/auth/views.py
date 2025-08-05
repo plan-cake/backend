@@ -69,7 +69,7 @@ def register(request):
     """
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
-    logger.debug("Registering %s for an account...", email)
+    logger.info("Registering %s for an account...", email)
 
     try:
         # Validate the password first
@@ -264,7 +264,7 @@ def login(request):
 
     is_logged_in = request.user.is_guest is False
     if is_logged_in:
-        logger.info("User %s is already logged in.", email)
+        logger.info("User %s is already logged in.", request.user.email)
         return Response(
             {"error": {"general": ["You are already logged in."]}}, status=400
         )
