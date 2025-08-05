@@ -1,8 +1,11 @@
+import os
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
 from rest_framework.response import Response
+
+from api.logging import FancyFormatter
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -104,3 +107,49 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 CELERY_BROKER_URL = "redis://localhost:6379/0"
+
+LOG_DIR = env("LOG_DIR")
+os.makedirs(LOG_DIR, exist_ok=True)  # Make the log directory if it doesn't exist
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "[{levelname:<8} {asctime}] {module:<12} {message}",
+            "style": "{",
+        },
+        "simple": {
+            "()": FancyFormatter,
+            "format": "[{levelname:<8} {asctime}] {message}",
+            "datefmt": "%H:%M:%S",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "DEBUG" if DEBUG else "WARNING",
+        },
+        "file": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": f"{LOG_DIR}/django.log",
+            "formatter": "verbose",
+            "level": "DEBUG",
+            "maxBytes": 1024 * 1024 * 5,  # 5 MB
+            "backupCount": 5,
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "api": {
+            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "propagate": False,
+        },
+    },
+}
