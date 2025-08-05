@@ -1,9 +1,10 @@
+import logging
 import uuid
 from datetime import datetime, timedelta
 
 import bcrypt
 from django.core.mail import send_mail
-from django.db import transaction
+from django.db import DatabaseError, transaction
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
@@ -34,6 +35,8 @@ from api.utils import (
     validate_json_input,
     validate_output,
 )
+
+logger = logging.getLogger("api")
 
 
 class RegisterAccountSerializer(serializers.Serializer):
@@ -66,6 +69,7 @@ def register(request):
     """
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
+    logger.debug("Registering %s for an account...", email)
 
     try:
         # Validate the password first
@@ -75,6 +79,7 @@ def register(request):
 
         # Check if the email already exists
         if UserAccount.objects.filter(email=email).exists():
+            logger.info("Email %s is already in use!", email)
             if SEND_EMAILS:
                 send_mail(
                     subject="Plancake - Email in Use",
@@ -83,9 +88,6 @@ def register(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            else:
-                # Just print a message
-                print(f"Email {email} in use!")
         else:
             # Create an unverified user account
             ver_code = str(uuid.uuid4())
@@ -96,6 +98,8 @@ def register(request):
                     email=email,
                     password_hash=pwd_hash,
                 )
+            logger.info("Email %s successfully registered as unverified.", email)
+            logger.debug("Verification code for %s: %s", email, ver_code)
 
             if SEND_EMAILS:
                 send_mail(
@@ -105,17 +109,17 @@ def register(request):
                     recipient_list=[email],
                     fail_silently=False,
                 )
-            else:
-                # Just print the code
-                print(f"{email} registered as unverified with code: {ver_code}")
 
         return Response(
             {"message": ["An email has been sent to your address for verification."]},
             status=200,
         )
 
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
 
@@ -145,12 +149,19 @@ def resend_register_email(request):
     register again.
     """
     email = request.validated_data.get("email")
+    logger.info("Resending verification email to %s...", email)
 
     try:
         unverified_user = UnverifiedUserAccount.objects.get(
             email=email,
             created_at__gte=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS),
         )
+        logger.debug(
+            "Verification code for %s: %s",
+            email,
+            unverified_user.verification_code,
+        )
+
         if SEND_EMAILS:
             send_mail(
                 subject="Plancake - Email Verification",
@@ -159,14 +170,14 @@ def resend_register_email(request):
                 recipient_list=[email],
                 fail_silently=False,
             )
-        else:
-            # Just print the verification code
-            print(f"Verification code for {email}: {unverified_user.verification_code}")
 
     except UnverifiedUserAccount.DoesNotExist:
-        pass  # Do not reveal if the email exists or not
+        logger.info("Unverified user with email %s does not exist!", email)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Verification email resent."]}, status=200)
@@ -189,11 +200,15 @@ def verify_email(request):
     This endpoint does NOT automatically log in the user after verifying.
     """
     ver_code = request.validated_data.get("verification_code")
+    logger.debug("Verifying code %s...", ver_code)
+
     try:
         unverified_user = UnverifiedUserAccount.objects.get(
             verification_code=ver_code,
             created_at__gte=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS),
         )
+        logger.info("Verification code is valid for %s.", unverified_user.email)
+
         with transaction.atomic():
             # Create the user account
             UserAccount.objects.create(
@@ -203,13 +218,18 @@ def verify_email(request):
             )
             # Delete the unverified user account
             unverified_user.delete()
+        logger.info("Account successfully created for %s.", unverified_user.email)
 
     except UnverifiedUserAccount.DoesNotExist:
+        logger.info("Verification code is invalid.")
         return Response(
             {"error": {"verification_code": ["Invalid verification code."]}}, status=404
         )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Email verified successfully."]}, status=200)
@@ -237,15 +257,17 @@ def login(request):
     If "remember_me" is true, the session token will have a significantly longer (but not
     infinite) expiration time.
     """
-    is_logged_in = request.user.is_guest is False
-    if is_logged_in:
-        return Response(
-            {"error": {"general": ["You are already logged in."]}}, status=400
-        )
-
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
     remember_me = request.validated_data.get("remember_me")
+    logger.info("Attempting to log in user with email %s...", email)
+
+    is_logged_in = request.user.is_guest is False
+    if is_logged_in:
+        logger.info("User %s is already logged in.", email)
+        return Response(
+            {"error": {"general": ["You are already logged in."]}}, status=400
+        )
 
     BAD_AUTH_RESPONSE = Response(
         {"error": {"general": ["Email or password is incorrect."]}}, status=400
@@ -254,6 +276,7 @@ def login(request):
     try:
         user = UserAccount.objects.get(email=email)
         if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+            logger.info("Login failed for %s: Incorrect password.", email)
             return BAD_AUTH_RESPONSE
 
         session_token = str(uuid.uuid4())
@@ -262,11 +285,17 @@ def login(request):
                 session_token=session_token, user_account=user, is_extended=remember_me
             )
             UserLogin.objects.create(user_account=user)
+        logger.info("User %s logged in successfully.", email)
+        logger.debug("Session token for %s: %s", email, session_token)
 
     except UserAccount.DoesNotExist:
+        logger.info("Login failed for %s: User does not exist.", email)
         return BAD_AUTH_RESPONSE
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Login successful."]}, status=200)
@@ -297,8 +326,10 @@ def check_password(request):
     password = request.validated_data.get("password")
 
     if errors := validate_password(password):
+        logger.info("Password validation failed.")
         return Response({"error": {"password": errors}}, status=400)
 
+    logger.info("Password validation successful.")
     return Response({"message": ["Password is valid."]})
 
 
@@ -337,6 +368,8 @@ def start_password_reset(request):
     reset token will be generated and the old one invalidated.
     """
     email = request.validated_data.get("email")
+    logger.info("Starting password reset for %s...", email)
+
     try:
         user = UserAccount.objects.get(email=email)
         reset_token = str(uuid.uuid4())
@@ -345,6 +378,8 @@ def start_password_reset(request):
             PasswordResetToken.objects.create(
                 reset_token=reset_token, user_account=user
             )
+        logger.info("Password reset token created for %s.", email)
+        logger.debug("Password reset token for %s: %s", email, reset_token)
 
         if SEND_EMAILS:
             send_mail(
@@ -354,14 +389,14 @@ def start_password_reset(request):
                 recipient_list=[email],
                 fail_silently=False,
             )
-        else:
-            # Just print the reset token
-            print(f"Password reset token for {email}: {reset_token}")
 
     except UserAccount.DoesNotExist:
-        pass  # Do not reveal if the email exists or not
+        logger.info("Password reset failed for %s: User does not exist.", email)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     return Response(
@@ -390,8 +425,10 @@ def reset_password(request):
     """
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
+    logger.debug("Attempting to reset password with token %s...", reset_token)
 
     if errors := validate_password(new_password):
+        logger.info("Password reset failed: Invalid new password.")
         return Response({"error": {"new_password": errors}}, status=400)
 
     try:
@@ -405,6 +442,7 @@ def reset_password(request):
 
             # Check if the new password is actually new
             if bcrypt.checkpw(new_password.encode(), user.password_hash.encode()):
+                logger.info("Password reset failed: New password was not new.")
                 return Response(
                     {
                         "error": {
@@ -421,16 +459,22 @@ def reset_password(request):
             ).decode()
             user.save()
             reset_token_obj.delete()  # Make sure to remove the reset token after use
+            logger.info("Password reset successful for %s.", user.email)
 
             # Remove all active sessions for the user
             UserSession.objects.filter(user_account=user).delete()
+            logger.debug("All active sessions for %s deleted.", user.email)
 
     except PasswordResetToken.DoesNotExist:
+        logger.info("Password reset failed: Invalid reset token.")
         return Response(
             {"error": {"reset_token": ["Invalid reset token."]}}, status=404
         )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Password reset successfully."]}, status=200)
@@ -446,9 +490,16 @@ def logout(request):
     try:
         if token := request.COOKIES.get("account_sess_token"):
             UserSession.objects.filter(session_token=token).delete()
-    except Exception as e:
-        print(e)
+        else:
+            logger.info("User already logged out.")
+    except DatabaseError as e:
+        logger.db_error(e)
         return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    logger.info("User logged out successfully.")
 
     response = Response({"message": ["Logged out successfully."]}, status=200)
     response.delete_cookie("account_sess_token")
@@ -465,12 +516,19 @@ def delete_account(request):
     """
     password = request.validated_data.get("password")
     user = request.user
+    logger.info("Attempting to delete account for %s...", user.email)
+
     if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+        logger.info("Account deletion failed for %s: Incorrect password.", user.email)
         return Response({"error": {"password": ["Incorrect password."]}}, status=400)
     try:
         user.delete()
+        logger.info("Account for %s deleted successfully.", user.email)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
     except Exception as e:
-        print(e)
+        logger.error(e)
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Account deleted successfully."]}, status=200)
