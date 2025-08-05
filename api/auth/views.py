@@ -421,7 +421,8 @@ def reset_password(request):
     """
     Resets the password for a user account given a valid password reset token.
 
-    Also removes all currently active sessions as a security measure.
+    Also removes all currently active sessions as a security measure. This means that you
+    probably shouldn't call this endpoint while the user is currently logged in.
     """
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
