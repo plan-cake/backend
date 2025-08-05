@@ -116,7 +116,7 @@ LOGGING = {
     "disable_existing_loggers": False,
     "formatters": {
         "verbose": {
-            "format": "[{levelname:<8} {asctime}] {module:<12} {message}",
+            "format": "[{levelname:<8} {asctime}] {module:<12} {funcName:<25} {message}",
             "style": "{",
         },
         "simple": {
@@ -161,6 +161,7 @@ LOGGING = {
 class PlancakeLogger(logging.Logger):
     def db_error(self, msg, *args, **kwargs):
         self.error("Database error: %s", msg, *args, **kwargs)
+
 
 # Now any logger in the project will have access to this class
 logging.setLoggerClass(PlancakeLogger)
