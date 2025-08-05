@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -153,3 +154,13 @@ LOGGING = {
         },
     },
 }
+
+
+# Custom logger just to add some of my own custom logging functions
+# We love DRY!!!
+class PlancakeLogger(logging.Logger):
+    def db_error(self, msg, *args, **kwargs):
+        self.error("Database error: %s", msg, *args, **kwargs)
+
+# Now any logger in the project will have access to this class
+logging.setLoggerClass(PlancakeLogger)
