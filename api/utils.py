@@ -313,6 +313,8 @@ def require_account_auth(func):
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
         acct_token = request.COOKIES.get("account_sess_token")
+        logging.info("Checking account authentication...")
+        logging.debug("Account session token: %s", acct_token)
 
         BAD_AUTH_RESPONSE = Response(
             {"error": {"general": ["Account required."]}}, status=401
@@ -320,12 +322,12 @@ def require_account_auth(func):
 
         if acct_token:
             try:
-
                 with transaction.atomic():
                     session = get_session(acct_token)
                     if not session:
                         raise UserSession.DoesNotExist
                     session.save()  # To update last_used to now
+                logging.info("Account session is valid.")
 
                 # At this point the account is authenticated
                 request.user = session.user_account
@@ -346,11 +348,16 @@ def require_account_auth(func):
                 )
                 return response
             except UserSession.DoesNotExist:
+                logging.info("Account session expired.")
                 return BAD_AUTH_RESPONSE
+            except DatabaseError as e:
+                logging.db_error(e)
+                return GENERIC_ERR_RESPONSE
             except Exception as e:
-                print(e)
+                logging.error(e)
                 return GENERIC_ERR_RESPONSE
         else:
+            logging.info("No account session token found.")
             return BAD_AUTH_RESPONSE
 
     get_metadata(wrapper).min_auth_required = "User Account"
@@ -434,38 +441,35 @@ def validate_error_format(data, input_serializer_class):
         }
     }
     """
+
+    def log_error_msg_error(message):
+        logging.error("Error message validation error: %s", message)
+
     if not isinstance(data, dict):
-        return False
+        log_error_msg_error("Response must be a dictionary.")
 
     if "error" not in data or not isinstance(data["error"], dict):
-        return False
+        log_error_msg_error("Response must contain an 'error' dictionary.")
 
     if input_serializer_class:
         for field_name, value in data["error"].items():
             if field_name not in input_serializer_class().fields:
                 if field_name != "general":
-                    print(
-                        f"Error: {field_name} must be a field name from the input serializer."
+                    log_error_msg_error(
+                        f"{field_name} must be a field name from the input serializer."
                     )
-                    return False
             if not isinstance(value, list):
-                print(f"Error: {field_name} must be a list.")
-                return False
+                log_error_msg_error(f"{field_name} must be a list.")
             if not all(isinstance(item, str) for item in value):
-                print(f"Error: All items in {field_name} must be strings.")
-                return False
+                log_error_msg_error(f"All items in {field_name} must be strings.")
     else:
         for field_name, value in data["error"].items():
             if field_name != "general":
-                print(
-                    f"Error: {field_name} must be named 'general' if no input serializer is provided."
+                log_error_msg_error(
+                    f"{field_name} must be named 'general' if no input serializer is provided."
                 )
-                return False
             if not isinstance(value, list):
-                print(f"Error: {field_name} must be a list.")
-                return False
-
-    return True
+                log_error_msg_error(f"{field_name} must be a list.")
 
 
 class MessageOutputSerializer(serializers.Serializer):
@@ -487,15 +491,14 @@ def validate_output(serializer_class):
                         print(serializer.errors)
                         return GENERIC_ERR_RESPONSE
                 else:
-                    if not validate_error_format(
+                    validate_error_format(
                         response.data, get_metadata(wrapper).input_serializer_class
-                    ):
-                        # The error format validator will print a message
-                        return GENERIC_ERR_RESPONSE
+                    )
+                    # If the format is bad, just print errors to the log and move on
+                    # We don't want errors causing errors to cause problems in prod
                     return response
             else:
-                # Something is REALLY wrong
-                print("Response is not a valid Response object.")
+                logging.critical("Response is not a valid Response object.")
                 return GENERIC_ERR_RESPONSE
 
         get_metadata(wrapper).output_serializer_class = serializer_class
@@ -526,6 +529,7 @@ def rate_limit(
                 msg = error_message
                 if "{rate}" in msg:
                     msg = msg.replace("{rate}", throttle.get_rate())
+                logger.warning(msg)
                 return Response(
                     {"error": {"general": [msg]}},
                     status=429,
