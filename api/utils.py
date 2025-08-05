@@ -1,4 +1,5 @@
 import functools
+import logging
 import uuid
 from datetime import datetime, timedelta
 
@@ -16,6 +17,8 @@ from api.settings import (
     REST_FRAMEWORK,
     SESS_EXP_SECONDS,
 )
+
+logger = logging.getLogger("api")
 
 
 class APIMetadata:
@@ -56,6 +59,12 @@ def api_endpoint(method):
         metadata = get_metadata(func)
         metadata.method = method
         drf_view.metadata = metadata
+        # Check if the endpoint has an output serializer
+        if not metadata.output_serializer_class:
+            logger.warning(
+                "No output serializer defined for function: %s",
+                func.__name__,
+            )
         return drf_view
 
     return decorator
