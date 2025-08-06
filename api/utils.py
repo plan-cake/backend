@@ -112,12 +112,10 @@ def require_auth(func):
 
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
-        logging.info("Checking authentication...")
         acct_token = request.COOKIES.get("account_sess_token")
         acct_sess_expired = False
         if acct_token:
-            logging.info("Account session token found.")
-            logging.debug("Account session token: %s", acct_token)
+            logger.debug("Account session token: %s", acct_token)
             try:
                 with transaction.atomic():
                     session = get_session(acct_token)
@@ -125,8 +123,6 @@ def require_auth(func):
                         # To break out of the rest of the logic
                         raise UserSession.DoesNotExist
                     session.save()  # To update last_used to now
-
-                logging.info("Account session is valid.")
 
                 # At this point the account is authenticated
                 request.user = session.user_account
@@ -147,21 +143,20 @@ def require_auth(func):
                 )
                 return response
             except UserSession.DoesNotExist:
-                logging.info("Account session expired.")
+                logger.info("Account session expired.")
                 acct_sess_expired = True
             except DatabaseError as e:
-                logging.db_error(e)
+                logger.db_error(e)
                 return GENERIC_ERR_RESPONSE
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
                 return GENERIC_ERR_RESPONSE
 
         # At this point the account session either expired or did not exist
         guest_token = request.COOKIES.get("guest_sess_token")
 
         if guest_token:
-            logging.info("Guest session token found.")
-            logging.debug("Guest session token: %s", guest_token)
+            logger.debug("Guest session token: %s", guest_token)
             # Make sure the guest session token exists (it should)
             try:
                 with transaction.atomic():
@@ -169,7 +164,6 @@ def require_auth(func):
                     if not session:
                         raise UserSession.DoesNotExist
                     session.save()  # Update last_used
-                logging.info("Guest session is valid.")
 
                 request.user = session.user_account
                 # Run the function
@@ -183,11 +177,13 @@ def require_auth(func):
                     max_age=LONG_SESS_EXP_SECONDS,
                 )
             except UserSession.DoesNotExist:
-                logging.info("Guest session expired. Creating a new guest account...")
+                logger.info("Guest session expired. Creating a new guest account...")
                 # Check guest creation rate limit
                 throttle = GuestAccountCreationThrottle()
                 if not throttle.allow_request(request, None):
-                    logging.warning("Guest creation limit reached.")
+                    logger.warning(
+                        f"Guest creation limit ({throttle.get_rate()}) reached."
+                    )
                     return Response(
                         {
                             "error": {
@@ -208,8 +204,7 @@ def require_auth(func):
                             user_account=guest_account,
                             is_extended=True,
                         )
-                    logging.info("New guest account created.")
-                    logging.debug(
+                    logger.debug(
                         "New guest session token: %s", guest_session.session_token
                     )
 
@@ -234,13 +229,10 @@ def require_auth(func):
                 logger.error(e)
                 return GENERIC_ERR_RESPONSE
         else:
-            logging.info(
-                "No guest session token found. Creating a new guest account..."
-            )
             # Check guest creation rate limit
             throttle = GuestAccountCreationThrottle()
             if not throttle.allow_request(request, None):
-                logging.warning("Guest creation limit reached.")
+                logger.warning(f"Guest creation limit ({throttle.get_rate()}) reached.")
                 return Response(
                     {
                         "error": {
@@ -261,10 +253,7 @@ def require_auth(func):
                         user_account=guest_account,
                         is_extended=True,
                     )
-                logging.info("New guest account created.")
-                logging.debug(
-                    "New guest session token: %s", guest_session.session_token
-                )
+                logger.debug("New guest session token: %s", guest_session.session_token)
 
                 request.user = guest_account
                 # Run the function
@@ -278,10 +267,10 @@ def require_auth(func):
                     max_age=LONG_SESS_EXP_SECONDS,
                 )
             except DatabaseError as e:
-                logging.db_error(e)
+                logger.db_error(e)
                 return GENERIC_ERR_RESPONSE
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
                 return GENERIC_ERR_RESPONSE
 
         # Make sure to return a message if the account session expired
@@ -313,8 +302,7 @@ def require_account_auth(func):
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
         acct_token = request.COOKIES.get("account_sess_token")
-        logging.info("Checking account authentication...")
-        logging.debug("Account session token: %s", acct_token)
+        logger.debug("Account session token: %s", acct_token)
 
         BAD_AUTH_RESPONSE = Response(
             {"error": {"general": ["Account required."]}}, status=401
@@ -327,7 +315,6 @@ def require_account_auth(func):
                     if not session:
                         raise UserSession.DoesNotExist
                     session.save()  # To update last_used to now
-                logging.info("Account session is valid.")
 
                 # At this point the account is authenticated
                 request.user = session.user_account
@@ -348,16 +335,15 @@ def require_account_auth(func):
                 )
                 return response
             except UserSession.DoesNotExist:
-                logging.info("Account session expired.")
+                logger.info("Account session expired.")
                 return BAD_AUTH_RESPONSE
             except DatabaseError as e:
-                logging.db_error(e)
+                logger.db_error(e)
                 return GENERIC_ERR_RESPONSE
             except Exception as e:
-                logging.error(e)
+                logger.error(e)
                 return GENERIC_ERR_RESPONSE
         else:
-            logging.info("No account session token found.")
             return BAD_AUTH_RESPONSE
 
     get_metadata(wrapper).min_auth_required = "User Account"
@@ -443,7 +429,7 @@ def validate_error_format(data, input_serializer_class):
     """
 
     def log_error_msg_error(message):
-        logging.error("Error message validation error: %s", message)
+        logger.error("Error message validation error: %s", message)
 
     if not isinstance(data, dict):
         log_error_msg_error("Response must be a dictionary.")
@@ -498,7 +484,7 @@ def validate_output(serializer_class):
                     # We don't want errors causing errors to cause problems in prod
                     return response
             else:
-                logging.critical("Response is not a valid Response object.")
+                logger.critical("Response is not a valid Response object.")
                 return GENERIC_ERR_RESPONSE
 
         get_metadata(wrapper).output_serializer_class = serializer_class
