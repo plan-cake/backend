@@ -474,7 +474,7 @@ def validate_output(serializer_class):
                         response.data = serializer.validated_data
                         return response
                     else:
-                        print(serializer.errors)
+                        logger.error("Output validation failed: %s", serializer.errors)
                         return GENERIC_ERR_RESPONSE
                 else:
                     validate_error_format(
