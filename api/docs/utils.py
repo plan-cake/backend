@@ -55,7 +55,7 @@ def get_serializer_format(serializer_class, include_required=True):
             child = field.child.__class__.__name__
             child_type = get_readable_field_name(child)
             fields[field_name] = {
-                "type": f"array",
+                "type": "array",
                 "items": {
                     "type": child_type,
                 },

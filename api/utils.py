@@ -182,7 +182,7 @@ def require_auth(func):
                 throttle = GuestAccountCreationThrottle()
                 if not throttle.allow_request(request, None):
                     logger.warning(
-                        f"Guest creation limit ({throttle.get_rate()}) reached."
+                        "Guest creation limit (%s) reached.", throttle.get_rate()
                     )
                     return Response(
                         {
@@ -232,7 +232,9 @@ def require_auth(func):
             # Check guest creation rate limit
             throttle = GuestAccountCreationThrottle()
             if not throttle.allow_request(request, None):
-                logger.warning(f"Guest creation limit ({throttle.get_rate()}) reached.")
+                logger.warning(
+                    "Guest creation limit (%s) reached.", throttle.get_rate()
+                )
                 return Response(
                     {
                         "error": {
