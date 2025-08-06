@@ -69,7 +69,6 @@ def register(request):
     """
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
-    logger.info("Registering %s for an account...", email)
 
     try:
         # Validate the password first
@@ -98,7 +97,6 @@ def register(request):
                     email=email,
                     password_hash=pwd_hash,
                 )
-            logger.info("Email %s successfully registered as unverified.", email)
             logger.debug("Verification code for %s: %s", email, ver_code)
 
             if SEND_EMAILS:
@@ -149,7 +147,6 @@ def resend_register_email(request):
     register again.
     """
     email = request.validated_data.get("email")
-    logger.info("Resending verification email to %s...", email)
 
     try:
         unverified_user = UnverifiedUserAccount.objects.get(
@@ -200,14 +197,12 @@ def verify_email(request):
     This endpoint does NOT automatically log in the user after verifying.
     """
     ver_code = request.validated_data.get("verification_code")
-    logger.debug("Verifying code %s...", ver_code)
 
     try:
         unverified_user = UnverifiedUserAccount.objects.get(
             verification_code=ver_code,
             created_at__gte=datetime.now() - timedelta(seconds=EMAIL_CODE_EXP_SECONDS),
         )
-        logger.info("Verification code is valid for %s.", unverified_user.email)
 
         with transaction.atomic():
             # Create the user account
@@ -260,7 +255,6 @@ def login(request):
     email = request.validated_data.get("email")
     password = request.validated_data.get("password")
     remember_me = request.validated_data.get("remember_me")
-    logger.info("Attempting to log in user with email %s...", email)
 
     is_logged_in = request.user.is_guest is False
     if is_logged_in:
@@ -285,7 +279,6 @@ def login(request):
                 session_token=session_token, user_account=user, is_extended=remember_me
             )
             UserLogin.objects.create(user_account=user)
-        logger.info("User %s logged in successfully.", email)
         logger.debug("Session token for %s: %s", email, session_token)
 
     except UserAccount.DoesNotExist:
@@ -326,10 +319,8 @@ def check_password(request):
     password = request.validated_data.get("password")
 
     if errors := validate_password(password):
-        logger.info("Password validation failed.")
         return Response({"error": {"password": errors}}, status=400)
 
-    logger.info("Password validation successful.")
     return Response({"message": ["Password is valid."]})
 
 
@@ -368,7 +359,6 @@ def start_password_reset(request):
     reset token will be generated and the old one invalidated.
     """
     email = request.validated_data.get("email")
-    logger.info("Starting password reset for %s...", email)
 
     try:
         user = UserAccount.objects.get(email=email)
@@ -378,7 +368,6 @@ def start_password_reset(request):
             PasswordResetToken.objects.create(
                 reset_token=reset_token, user_account=user
             )
-        logger.info("Password reset token created for %s.", email)
         logger.debug("Password reset token for %s: %s", email, reset_token)
 
         if SEND_EMAILS:
@@ -426,7 +415,6 @@ def reset_password(request):
     """
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
-    logger.debug("Attempting to reset password with token %s...", reset_token)
 
     if errors := validate_password(new_password):
         logger.info("Password reset failed: Invalid new password.")
@@ -460,11 +448,9 @@ def reset_password(request):
             ).decode()
             user.save()
             reset_token_obj.delete()  # Make sure to remove the reset token after use
-            logger.info("Password reset successful for %s.", user.email)
 
             # Remove all active sessions for the user
             UserSession.objects.filter(user_account=user).delete()
-            logger.debug("All active sessions for %s deleted.", user.email)
 
     except PasswordResetToken.DoesNotExist:
         logger.info("Password reset failed: Invalid reset token.")
@@ -500,8 +486,6 @@ def logout(request):
         logger.error(e)
         return GENERIC_ERR_RESPONSE
 
-    logger.info("User logged out successfully.")
-
     response = Response({"message": ["Logged out successfully."]}, status=200)
     response.delete_cookie("account_sess_token")
     return response
@@ -517,14 +501,12 @@ def delete_account(request):
     """
     password = request.validated_data.get("password")
     user = request.user
-    logger.info("Attempting to delete account for %s...", user.email)
 
     if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
         logger.info("Account deletion failed for %s: Incorrect password.", user.email)
         return Response({"error": {"password": ["Incorrect password."]}}, status=400)
     try:
         user.delete()
-        logger.info("Account for %s deleted successfully.", user.email)
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
