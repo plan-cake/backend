@@ -140,3 +140,7 @@ GitHub.sublime-settings
 # Celery-generated files
 celerybeat-schedule
 celerybeat-schedule.lock
+
+# Mac stuff
+.DS_Store
+
