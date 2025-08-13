@@ -74,6 +74,7 @@ REST_FRAMEWORK = {
         "guest_account_creation": "2/hour",
         "login": "10/hour",
         "password_reset": "3/hour",
+        "event_creation": "6/hour",
     },
 }
 

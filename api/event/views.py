@@ -2,10 +2,12 @@ import logging
 
 from rest_framework import serializers
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    rate_limit,
     require_auth,
     validate_json_input,
     validate_output,
@@ -25,7 +27,14 @@ class DateEventCreateSerializer(serializers.Serializer):
     custom_code = serializers.CharField(required=False)
 
 
+class EventCreateThrottle(AnonRateThrottle):
+    scope = "event_creation"
+
+
 @api_endpoint("POST")
+@rate_limit(
+    EventCreateThrottle, "Event creation limit reached ({rate}). Try again later."
+)
 @require_auth
 @validate_json_input(DateEventCreateSerializer)
 @validate_output(MessageOutputSerializer)
