@@ -26,12 +26,23 @@ class UserAccount(models.Model):
         indexes = [models.Index(fields=["email"])]
 
 
+class UnverifiedUserAccount(models.Model):
+    verification_code = models.CharField(max_length=255, primary_key=True)
+    email = models.EmailField(unique=True)
+    password_hash = models.CharField(max_length=255)
+    created_at = DateTimeNoTZField(auto_now_add=True)
+
+
 class UserSession(models.Model):
     session_token = models.CharField(max_length=255, primary_key=True)
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="session_tokens"
     )
+    is_extended = models.BooleanField(default=False)
     last_used = DateTimeNoTZField(auto_now=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["is_extended", "last_used"])]
 
 
 class PasswordResetToken(models.Model):

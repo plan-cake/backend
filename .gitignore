@@ -136,3 +136,11 @@ GitHub.sublime-settings
 !.vscode/launch.json 
 !.vscode/extensions.json 
 .history
+
+# Celery-generated files
+celerybeat-schedule
+celerybeat-schedule.lock
+
+# Mac stuff
+.DS_Store
+
