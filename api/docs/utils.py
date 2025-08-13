@@ -38,6 +38,8 @@ def get_readable_field_name(field_name):
             return "datetime"
         case "EmailField":
             return "string"
+        case "ChoiceField":
+            return "string"
         case _:
             return "object"
 
