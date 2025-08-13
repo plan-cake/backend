@@ -364,7 +364,26 @@ def validate_json_input(serializer_class):
         def wrapper(request, *args, **kwargs):
             serializer = serializer_class(data=request.data)
             if not serializer.is_valid():
-                return Response({"error": serializer.errors}, status=400)
+                errors = serializer.errors
+                # Check if there are any ChoiceFields
+                choice_field_errors = [
+                    field_name
+                    for field_name in errors
+                    if isinstance(
+                        serializer.fields[field_name], serializers.ChoiceField
+                    )
+                    and any(
+                        "is not a valid choice" in err
+                        for err in serializer.errors[field_name]
+                    )
+                ]
+                # Change the error message to say the valid values
+                for choice_field in choice_field_errors:
+                    valid_values = serializer.fields[choice_field].choices
+                    errors[choice_field] = [
+                        f"Invalid value. Valid values are: ['{"', '".join(valid_values)}']"
+                    ]
+                return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
