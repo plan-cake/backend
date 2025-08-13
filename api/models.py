@@ -77,6 +77,7 @@ class UserEvent(models.Model):
         choices=EventType.choices,
     )
     duration = models.PositiveSmallIntegerField(null=True)
+    time_zone = models.CharField(max_length=50)
     created_at = DateTimeNoTZField(auto_now_add=True)
     updated_at = DateTimeNoTZField(auto_now=True)
 
