@@ -1,5 +1,6 @@
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from rest_framework import serializers
 from rest_framework.response import Response
@@ -54,12 +55,14 @@ def create_date_event(request):
     custom_code = request.validated_data.get("custom_code")
 
     # Some extra input validation
-    if start_time >= end_time:
-        return Response(
-            {"error": {"end_time": ["end_time must be earlier than start_time."]}},
-            status=400,
-        )
-    if start_date < datetime.now().date():
+    try:
+        user_tz = ZoneInfo(time_zone)
+        user_date = datetime.now(user_tz).date()
+    except:
+        return Response({"error": {"time_zone": ["Invalid time zone."]}}, status=400)
+    if start_date < user_date:
+        # By comparing to the user's local date, we ensure that they don't get blocked
+        # from creating an event just because they're behind UTC
         return Response(
             {"error": {"start_date": ["start_date must be today or in the future."]}},
             status=400,
@@ -67,6 +70,11 @@ def create_date_event(request):
     if start_date > end_date:
         return Response(
             {"error": {"end_date": ["end_date must be on or after start_date."]}},
+            status=400,
+        )
+    if start_time >= end_time:
+        return Response(
+            {"error": {"end_time": ["end_time must be earlier than start_time."]}},
             status=400,
         )
     if duration and duration not in [15, 30, 60]:
@@ -80,7 +88,5 @@ def create_date_event(request):
             },
             status=400,
         )
-
-    # TODO: Validate the time zone
 
     return Response({"message": ["Event created successfully."]}, status=201)
