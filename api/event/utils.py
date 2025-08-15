@@ -50,3 +50,20 @@ def generate_code():
             return code
         code = generate_random_string()
     raise Exception("Failed to generate a unique URL code.")
+
+
+def daterange(start_date, end_date):
+    current = start_date
+    while current <= end_date:
+        yield current
+        current += timedelta(days=1)
+
+
+def timerange(start_time, end_time):
+    # Adding the date is a workaround since you can't use timedelta with just times
+    date = datetime.today()
+    current = datetime.combine(date, start_time)
+    end_dt = datetime.combine(date, end_time)
+    while current < end_dt:
+        yield current.time()
+        current += timedelta(minutes=15)
