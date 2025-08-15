@@ -51,6 +51,11 @@ class EventCreateThrottle(AnonRateThrottle):
 def create_date_event(request):
     """
     Creates a 'date' type event that spans specific dates.
+
+    If successful, the URL code for the event will be returned.
+
+    A custom URL code can be specified, subject to availability. If unavailable, an error
+    message is returned. Only alphanumeric characters and dashes are allowed.
     """
     user = request.user
     title = request.validated_data.get("title")
