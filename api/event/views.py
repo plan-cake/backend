@@ -33,6 +33,10 @@ class DateEventCreateSerializer(serializers.Serializer):
     custom_code = serializers.CharField(required=False, max_length=255)
 
 
+class EventCodeSerializer(serializers.Serializer):
+    event_code = serializers.CharField(required=True, max_length=255)
+
+
 class EventCreateThrottle(AnonRateThrottle):
     scope = "event_creation"
 
@@ -43,7 +47,7 @@ class EventCreateThrottle(AnonRateThrottle):
 )
 @require_auth
 @validate_json_input(DateEventCreateSerializer)
-@validate_output(MessageOutputSerializer)
+@validate_output(EventCodeSerializer)
 def create_date_event(request):
     """
     Creates a 'date' type event that spans specific dates.
@@ -150,4 +154,4 @@ def create_date_event(request):
         return GENERIC_ERR_RESPONSE
 
     logger.debug(f"Event created with code: {url_code}")
-    return Response({"message": ["Event created successfully."]}, status=201)
+    return Response({"event_code": url_code}, status=201)
