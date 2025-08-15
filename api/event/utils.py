@@ -1,8 +1,14 @@
+import random
 import re
+import string
 from datetime import datetime, timedelta
 
 from api.models import UrlCode
-from api.settings import URL_CODE_EXP_SECONDS
+from api.settings import (
+    RAND_URL_CODE_ATTEMPTS,
+    RAND_URL_CODE_LENGTH,
+    URL_CODE_EXP_SECONDS,
+)
 
 
 def check_code_available(code):
@@ -27,3 +33,20 @@ def check_custom_code(code):
     RESERVED_KEYWORDS = []  # TODO: Add this later after consulting with frontend
     if code in RESERVED_KEYWORDS or not check_code_available(code):
         return "Code unavailable."
+
+
+def generate_code():
+    def generate_random_string():
+        return "".join(
+            # Using SystemRandom() is "cryptographically more secure"
+            random.SystemRandom().choices(
+                string.ascii_letters + string.digits, k=RAND_URL_CODE_LENGTH
+            )
+        )
+
+    code = generate_random_string()
+    for _ in range(RAND_URL_CODE_ATTEMPTS):
+        if check_code_available(code):
+            return code
+        code = generate_random_string()
+    raise Exception("Failed to generate a unique URL code.")

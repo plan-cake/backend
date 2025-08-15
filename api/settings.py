@@ -168,3 +168,7 @@ class PlancakeLogger(logging.Logger):
 
 # Now any logger in the project will have access to this class
 logging.setLoggerClass(PlancakeLogger)
+
+RAND_URL_CODE_LENGTH = 8
+
+RAND_URL_CODE_ATTEMPTS = 4

@@ -6,7 +6,8 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from api.event.utils import check_custom_code
+from api.event.utils import check_custom_code, generate_code
+from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
@@ -90,9 +91,18 @@ def create_date_event(request):
             status=400,
         )
 
+    url_code = None
     if custom_code:
         error = check_custom_code(custom_code)
         if error:
             return Response({"error": {"custom_code": [error]}}, status=400)
+        url_code = custom_code
+    else:
+        # Generate a random code if not provided
+        try:
+            url_code = generate_code()
+        except:
+            logger.critical("Failed to generate a unique URL code.")
+            return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Event created successfully."]}, status=201)
