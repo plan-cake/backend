@@ -2,11 +2,13 @@ import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
+from django.db import DatabaseError, transaction
 from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.event.utils import check_custom_code, generate_code
+from api.models import UrlCode, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
@@ -105,4 +107,25 @@ def create_date_event(request):
             logger.critical("Failed to generate a unique URL code.")
             return GENERIC_ERR_RESPONSE
 
+    try:
+        with transaction.atomic():
+            new_event = UserEvent.objects.create(
+                user_account=user,
+                title=title,
+                date_type="SPECIFIC",
+                duration=duration,
+                time_zone=time_zone,
+            )
+            # Here we trust the code checking logic from before instead of checking again
+            UrlCode.objects.update_or_create(
+                url_code=url_code, defaults={"user_event": new_event}
+            )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    logger.debug(f"Event created with code: {url_code}")
     return Response({"message": ["Event created successfully."]}, status=201)
