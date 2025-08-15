@@ -9,7 +9,7 @@ from rest_framework.throttling import AnonRateThrottle
 
 from api.event.utils import check_custom_code, daterange, generate_code, timerange
 from api.models import EventDateTimeslot, UrlCode, UserEvent
-from api.settings import GENERIC_ERR_RESPONSE
+from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
@@ -79,6 +79,17 @@ def create_date_event(request):
     if start_time >= end_time:
         return Response(
             {"error": {"end_time": ["end_time must be after start_time."]}},
+            status=400,
+        )
+    if (end_date - start_date).days > MAX_EVENT_DAYS:
+        return Response(
+            {
+                "error": {
+                    "end_date": [
+                        f"end_date must be within {MAX_EVENT_DAYS} days of start_date."
+                    ]
+                }
+            },
             status=400,
         )
     if duration and duration not in [15, 30, 60]:

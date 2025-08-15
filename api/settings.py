@@ -172,3 +172,5 @@ logging.setLoggerClass(PlancakeLogger)
 RAND_URL_CODE_LENGTH = 8
 
 RAND_URL_CODE_ATTEMPTS = 4
+
+MAX_EVENT_DAYS = 30  # 1 month
