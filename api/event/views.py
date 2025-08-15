@@ -7,8 +7,8 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from api.event.utils import check_custom_code, generate_code
-from api.models import UrlCode, UserEvent
+from api.event.utils import check_custom_code, daterange, generate_code, timerange
+from api.models import EventDateTimeslot, UrlCode, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
@@ -120,6 +120,17 @@ def create_date_event(request):
             UrlCode.objects.update_or_create(
                 url_code=url_code, defaults={"user_event": new_event}
             )
+            # Create timeslots for the date and time range
+            timeslots = []
+            for date in daterange(start_date, end_date):
+                for time in timerange(start_time, end_time):
+                    timeslots.append(
+                        EventDateTimeslot(
+                            user_event=new_event,
+                            timeslot=datetime.combine(date, time),
+                        )
+                    )
+            EventDateTimeslot.objects.bulk_create(timeslots)
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
