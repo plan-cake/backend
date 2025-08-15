@@ -78,7 +78,7 @@ def create_date_event(request):
         )
     if start_time >= end_time:
         return Response(
-            {"error": {"end_time": ["end_time must be earlier than start_time."]}},
+            {"error": {"end_time": ["end_time must be after start_time."]}},
             status=400,
         )
     if duration and duration not in [15, 30, 60]:
