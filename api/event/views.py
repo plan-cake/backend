@@ -6,6 +6,7 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from api.event.utils import check_custom_code
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
@@ -88,5 +89,10 @@ def create_date_event(request):
             },
             status=400,
         )
+
+    if custom_code:
+        error = check_custom_code(custom_code)
+        if error:
+            return Response({"error": {"custom_code": [error]}}, status=400)
 
     return Response({"message": ["Event created successfully."]}, status=201)

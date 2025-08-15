@@ -86,6 +86,8 @@ EMAIL_CODE_EXP_SECONDS = 1800  # 30 minutes
 
 PWD_RESET_EXP_SECONDS = 1800  # 30 minutes
 
+URL_CODE_EXP_SECONDS = 1209600  # 14 days
+
 GENERIC_ERR_RESPONSE = Response(
     {"error": {"general": ["An unknown error has occurred."]}}, status=500
 )
