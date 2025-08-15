@@ -381,7 +381,7 @@ def validate_json_input(serializer_class):
                 for choice_field in choice_field_errors:
                     valid_values = serializer.fields[choice_field].choices
                     errors[choice_field] = [
-                        f"Invalid value. Valid values are: ['{"', '".join(valid_values)}']"
+                        f"Invalid value. Valid values are: {', '.join(valid_values)}"
                     ]
                 return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
