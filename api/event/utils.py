@@ -14,7 +14,7 @@ from api.settings import (
 def check_code_available(code):
     try:
         existing_code = UrlCode.objects.get(url_code=code)
-        if existing_code.last_used < datetime.now() - timedelta(
+        if existing_code.last_used >= datetime.now() - timedelta(
             seconds=URL_CODE_EXP_SECONDS
         ):
             return False
