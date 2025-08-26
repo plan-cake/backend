@@ -1,7 +1,7 @@
 import random
 import re
 import string
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 
 from api.models import UrlCode
 from api.settings import (
@@ -59,7 +59,9 @@ def daterange(start_date, end_date):
         current += timedelta(days=1)
 
 
-def timerange(start_time, end_time):
+def timerange(start_hour, end_hour):
+    start_time = time(start_hour)
+    end_time = time(end_hour) if end_hour != 24 else time(23, 59)
     # Adding the date is a workaround since you can't use timedelta with just times
     date = datetime.today()
     current = datetime.combine(date, start_time)

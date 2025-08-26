@@ -27,8 +27,8 @@ class DateEventCreateSerializer(serializers.Serializer):
     duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
     start_date = serializers.DateField(required=True)
     end_date = serializers.DateField(required=True)
-    start_time = serializers.TimeField(required=True)
-    end_time = serializers.TimeField(required=True)
+    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
     time_zone = serializers.CharField(required=True, max_length=64)
     custom_code = serializers.CharField(required=False, max_length=255)
 
@@ -62,8 +62,8 @@ def create_date_event(request):
     duration = request.validated_data.get("duration")
     start_date = request.validated_data.get("start_date")
     end_date = request.validated_data.get("end_date")
-    start_time = request.validated_data.get("start_time")
-    end_time = request.validated_data.get("end_time")
+    start_hour = request.validated_data.get("start_hour")
+    end_hour = request.validated_data.get("end_hour")
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
@@ -85,9 +85,9 @@ def create_date_event(request):
             {"error": {"end_date": ["end_date must be on or after start_date."]}},
             status=400,
         )
-    if start_time >= end_time:
+    if start_hour >= end_hour:
         return Response(
-            {"error": {"end_time": ["end_time must be after start_time."]}},
+            {"error": {"end_hour": ["end_hour must be after start_hour."]}},
             status=400,
         )
     if (end_date - start_date).days > MAX_EVENT_DAYS:
@@ -132,7 +132,7 @@ def create_date_event(request):
             # Create timeslots for the date and time range
             timeslots = []
             for date in daterange(start_date, end_date):
-                for time in timerange(start_time, end_time):
+                for time in timerange(start_hour, end_hour):
                     timeslots.append(
                         EventDateTimeslot(
                             user_event=new_event,
