@@ -263,12 +263,14 @@ class CustomCodeSerializer(serializers.Serializer):
 
 
 @api_endpoint("POST")
-@require_auth
 @validate_json_input(CustomCodeSerializer)
 @validate_output(MessageOutputSerializer)
 def check_code(request):
     """
     Checks if a custom code is valid and available, and returns an error if not.
+
+    This is useful for checking a code before creating an event, since an error when
+    creating an event will count for the rate limit.
     """
     custom_code = request.validated_data.get("custom_code")
     error = check_custom_code(custom_code)
