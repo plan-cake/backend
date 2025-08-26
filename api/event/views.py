@@ -24,7 +24,7 @@ logger = logging.getLogger("api")
 
 class DateEventCreateSerializer(serializers.Serializer):
     title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.IntegerField(required=False, min_value=15, max_value=60)
+    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
     start_date = serializers.DateField(required=True)
     end_date = serializers.DateField(required=True)
     start_time = serializers.TimeField(required=True)
@@ -96,17 +96,6 @@ def create_date_event(request):
                 "error": {
                     "end_date": [
                         f"end_date must be within {MAX_EVENT_DAYS} days of start_date."
-                    ]
-                }
-            },
-            status=400,
-        )
-    if duration and duration not in [15, 30, 60]:
-        return Response(
-            {
-                "error": {
-                    "duration": [
-                        "duration must be one of the following values: 15, 30, 60."
                     ]
                 }
             },
