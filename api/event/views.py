@@ -256,3 +256,23 @@ def create_week_event(request):
 
     logger.debug(f"Event created with code: {url_code}")
     return Response({"event_code": url_code}, status=201)
+
+
+class CustomCodeSerializer(serializers.Serializer):
+    custom_code = serializers.CharField(required=True, max_length=255)
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(CustomCodeSerializer)
+@validate_output(MessageOutputSerializer)
+def check_code(request):
+    """
+    Checks if a custom code is valid and available, and returns an error if not.
+    """
+    custom_code = request.validated_data.get("custom_code")
+    error = check_custom_code(custom_code)
+    if error:
+        return Response({"error": {"custom_code": [error]}}, status=400)
+
+    return Response({"message": ["Custom code is valid and available."]}, status=200)
