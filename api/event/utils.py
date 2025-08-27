@@ -2,9 +2,11 @@ import random
 import re
 import string
 from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from api.models import UrlCode
 from api.settings import (
+    MAX_EVENT_DAYS,
     RAND_URL_CODE_ATTEMPTS,
     RAND_URL_CODE_LENGTH,
     URL_CODE_EXP_SECONDS,
@@ -69,3 +71,28 @@ def timerange(start_hour, end_hour):
     while current < end_dt:
         yield current.time()
         current += timedelta(minutes=15)
+
+
+def validate_date_input(start_date, end_date, start_hour, end_hour, time_zone):
+    errors = {}
+    try:
+        user_tz = ZoneInfo(time_zone)
+        user_date = datetime.now(user_tz).date()
+    except:
+        errors["time_zone"] = ["Invalid time zone."]
+        # Return early to avoid worse errors later
+        return errors
+    if start_date < user_date:
+        # By comparing to the user's local date, we ensure that they don't get blocked
+        # from creating an event just because they're behind UTC
+        errors["start_date"] = ["start_date must be today or in the future."]
+    if start_date > end_date:
+        errors["end_date"] = ["end_date must be on or after start_date."]
+    if start_hour >= end_hour:
+        errors["end_hour"] = ["end_hour must be after start_hour."]
+    if (end_date - start_date).days > MAX_EVENT_DAYS:
+        errors["end_date"] = [
+            f"end_date must be within {MAX_EVENT_DAYS} days of start_date."
+        ]
+
+    return errors

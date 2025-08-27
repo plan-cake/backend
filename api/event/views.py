@@ -7,7 +7,13 @@ from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from api.event.utils import check_custom_code, daterange, generate_code, timerange
+from api.event.utils import (
+    check_custom_code,
+    daterange,
+    generate_code,
+    timerange,
+    validate_date_input,
+)
 from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
 from api.utils import (
@@ -67,40 +73,9 @@ def create_date_event(request):
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
-    # Some extra input validation
-    try:
-        user_tz = ZoneInfo(time_zone)
-        user_date = datetime.now(user_tz).date()
-    except:
-        return Response({"error": {"time_zone": ["Invalid time zone."]}}, status=400)
-    if start_date < user_date:
-        # By comparing to the user's local date, we ensure that they don't get blocked
-        # from creating an event just because they're behind UTC
-        return Response(
-            {"error": {"start_date": ["start_date must be today or in the future."]}},
-            status=400,
-        )
-    if start_date > end_date:
-        return Response(
-            {"error": {"end_date": ["end_date must be on or after start_date."]}},
-            status=400,
-        )
-    if start_hour >= end_hour:
-        return Response(
-            {"error": {"end_hour": ["end_hour must be after start_hour."]}},
-            status=400,
-        )
-    if (end_date - start_date).days > MAX_EVENT_DAYS:
-        return Response(
-            {
-                "error": {
-                    "end_date": [
-                        f"end_date must be within {MAX_EVENT_DAYS} days of start_date."
-                    ]
-                }
-            },
-            status=400,
-        )
+    errors = validate_date_input(start_date, end_date, start_hour, end_hour, time_zone)
+    if errors.keys():
+        return Response({"error": errors}, status=400)
 
     url_code = None
     if custom_code:
