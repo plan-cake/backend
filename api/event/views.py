@@ -13,6 +13,7 @@ from api.event.utils import (
     generate_code,
     timerange,
     validate_date_input,
+    validate_weekday_input,
 )
 from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
@@ -173,20 +174,9 @@ def create_week_event(request):
         ZoneInfo(time_zone)
     except:
         return Response({"error": {"time_zone": ["Invalid time zone."]}}, status=400)
-    if start_weekday > end_weekday:
-        return Response(
-            {
-                "error": {
-                    "end_weekday": ["end_weekday must be on or after start_weekday."]
-                }
-            },
-            status=400,
-        )
-    if start_hour >= end_hour:
-        return Response(
-            {"error": {"end_hour": ["end_hour must be after start_hour."]}},
-            status=400,
-        )
+    errors = validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour)
+    if errors.keys():
+        return Response({"error": errors}, status=400)
 
     url_code = None
     if custom_code:

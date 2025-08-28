@@ -99,3 +99,12 @@ def validate_date_input(
         ]
 
     return errors
+
+
+def validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour):
+    errors = {}
+    if start_weekday > end_weekday:
+        errors["end_weekday"] = ["end_weekday must be on or after start_weekday."]
+    if start_hour >= end_hour:
+        errors["end_hour"] = ["end_hour must be after start_hour."]
+    return errors
