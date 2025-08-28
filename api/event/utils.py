@@ -73,19 +73,22 @@ def timerange(start_hour, end_hour):
         current += timedelta(minutes=15)
 
 
-def validate_date_input(start_date, end_date, start_hour, end_hour, time_zone):
+def validate_date_input(
+    start_date, end_date, start_hour, end_hour, earliest_date, editing=False
+):
+    """
+    Validates date and time ranges for an event.
+
+    The editing parameter determines the error message given if start_date is too early.
+    """
     errors = {}
-    try:
-        user_tz = ZoneInfo(time_zone)
-        user_date = datetime.now(user_tz).date()
-    except:
-        errors["time_zone"] = ["Invalid time zone."]
-        # Return early to avoid worse errors later
-        return errors
-    if start_date < user_date:
-        # By comparing to the user's local date, we ensure that they don't get blocked
-        # from creating an event just because they're behind UTC
-        errors["start_date"] = ["start_date must be today or in the future."]
+    if start_date < earliest_date:
+        if editing:
+            errors["start_date"] = [
+                "start_date cannot be set earlier than today, or moved earlier if already before today."
+            ]
+        else:
+            errors["start_date"] = ["start_date must be today or in the future."]
     if start_date > end_date:
         errors["end_date"] = ["end_date must be on or after start_date."]
     if start_hour >= end_hour:

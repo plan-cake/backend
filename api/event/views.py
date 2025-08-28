@@ -73,7 +73,12 @@ def create_date_event(request):
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
-    errors = validate_date_input(start_date, end_date, start_hour, end_hour, time_zone)
+    try:
+        user_tz = ZoneInfo(time_zone)
+        user_date = datetime.now(user_tz).date()
+    except:
+        return Response({"error": {"time_zone": ["Invalid time zone."]}})
+    errors = validate_date_input(start_date, end_date, start_hour, end_hour, user_date)
     if errors.keys():
         return Response({"error": errors}, status=400)
 
