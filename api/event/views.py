@@ -248,3 +248,105 @@ def check_code(request):
         return Response({"error": {"custom_code": [error]}}, status=400)
 
     return Response({"message": ["Custom code is valid and available."]}, status=200)
+
+
+class DateEventEditSerializer(serializers.Serializer):
+    url_code = serializers.CharField(required=True, max_length=255)
+    title = serializers.CharField(required=True, max_length=50)
+    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    time_zone = serializers.CharField(required=True, max_length=64)
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(DateEventEditSerializer)
+@validate_output(MessageOutputSerializer)
+def edit_date_event(request):
+    """
+    Edits a 'date' type event, identified by its URL code.
+
+    The event must be originally created by the current user.
+    """
+    user = request.user
+    url_code = request.validated_data.get("url_code")
+    title = request.validated_data.get("title")
+    duration = request.validated_data.get("duration")
+    start_date = request.validated_data.get("start_date")
+    end_date = request.validated_data.get("end_date")
+    start_hour = request.validated_data.get("start_hour")
+    end_hour = request.validated_data.get("end_hour")
+    time_zone = request.validated_data.get("time_zone")
+
+    try:
+        user_tz = ZoneInfo(time_zone)
+        user_date = datetime.now(user_tz).date()
+    except:
+        return Response({"error": {"time_zone": ["Invalid time zone."]}})
+
+    try:
+        # Do everything inside a transaction to ensure atomicity
+        with transaction.atomic():
+            # Find the event
+            event = UserEvent.objects.get(
+                url_codes=url_code, user_account=user, date_type="SPECIFIC"
+            )
+            # Get the earliest timeslot
+            existing_start_date = (
+                EventDateTimeslot.objects.filter(user_event=event)
+                .order_by("timeslot")
+                .first()
+                .timeslot.date()
+            )
+
+            # If the start date is after today, it cannot be moved to a date earlier than today.
+            # If the start date is before today, it cannot be moved earlier at all.
+            earliest_date = user_date
+            if existing_start_date > user_date:
+                earliest_date = existing_start_date
+            errors = validate_date_input(
+                start_date, end_date, start_hour, end_hour, earliest_date, True
+            )
+            if errors.keys():
+                return Response({"error": errors}, status=400)
+
+            # Update the event object itself
+            event.title = title
+            event.duration = duration
+            event.time_zone = time_zone
+            event.save()
+
+            # Sort out the timeslot difference
+            existing_timeslots = set(
+                EventDateTimeslot.objects.filter(user_event=event).values_list(
+                    "timeslot", flat=True
+                )
+            )
+            edited_timeslots = set(
+                datetime.combine(date, time)
+                for date in daterange(start_date, end_date)
+                for time in timerange(start_hour, end_hour)
+            )
+            to_delete = existing_timeslots - edited_timeslots
+            to_add = edited_timeslots - existing_timeslots
+            EventDateTimeslot.objects.filter(
+                user_event=event, timeslot__in=to_delete
+            ).delete()
+            EventDateTimeslot.objects.bulk_create(
+                [EventDateTimeslot(user_event=event, timeslot=ts) for ts in to_add]
+            )
+
+    except UserEvent.DoesNotExist:
+        return Response({"error": {"general": ["Event not found."]}}, status=404)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    logger.debug(f"Event updated with code: {url_code}")
+    return Response({"message": ["Event updated successfully."]}, status=200)
