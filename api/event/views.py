@@ -350,3 +350,97 @@ def edit_date_event(request):
 
     logger.debug(f"Event updated with code: {url_code}")
     return Response({"message": ["Event updated successfully."]}, status=200)
+
+
+class WeekEventEditSerializer(serializers.Serializer):
+    url_code = serializers.CharField(required=True, max_length=255)
+    title = serializers.CharField(required=True, max_length=50)
+    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
+    start_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
+    end_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
+    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    time_zone = serializers.CharField(required=True, max_length=64)
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(WeekEventEditSerializer)
+@validate_output(MessageOutputSerializer)
+def edit_week_event(request):
+    """
+    Edits a 'week' type event, identified by its URL code.
+
+    The event must be originally created by the current user.
+    """
+    user = request.user
+    url_code = request.validated_data.get("url_code")
+    title = request.validated_data.get("title")
+    duration = request.validated_data.get("duration")
+    start_weekday = request.validated_data.get("start_weekday")
+    end_weekday = request.validated_data.get("end_weekday")
+    start_hour = request.validated_data.get("start_hour")
+    end_hour = request.validated_data.get("end_hour")
+    time_zone = request.validated_data.get("time_zone")
+
+    try:
+        ZoneInfo(time_zone)
+    except:
+        return Response({"error": {"time_zone": ["Invalid time zone."]}})
+
+    try:
+        # Do everything inside a transaction to ensure atomicity
+        with transaction.atomic():
+            # Find the event
+            event = UserEvent.objects.get(
+                url_codes=url_code, user_account=user, date_type="GENERIC"
+            )
+
+            errors = validate_weekday_input(
+                start_weekday, end_weekday, start_hour, end_hour
+            )
+            if errors.keys():
+                return Response({"error": errors}, status=400)
+
+            # Update the event object itself
+            event.title = title
+            event.duration = duration
+            event.time_zone = time_zone
+            event.save()
+
+            # Sort out the timeslot difference
+            existing_timeslots = set(
+                EventWeekdayTimeslot.objects.filter(user_event=event).values_list(
+                    "weekday", "timeslot"
+                )
+            )
+            edited_timeslots = set(
+                (weekday, time)
+                for weekday in range(start_weekday, end_weekday + 1)
+                for time in timerange(start_hour, end_hour)
+            )
+            to_delete = existing_timeslots - edited_timeslots
+            to_add = edited_timeslots - existing_timeslots
+            EventWeekdayTimeslot.objects.filter(
+                user_event=event,
+                weekday__in=[wd for wd, _ in to_delete],
+                timeslot__in=[ts for _, ts in to_delete],
+            ).delete()
+            EventWeekdayTimeslot.objects.bulk_create(
+                [
+                    EventWeekdayTimeslot(user_event=event, weekday=wd, timeslot=ts)
+                    for (wd, ts) in to_add
+                ]
+            )
+
+    except UserEvent.DoesNotExist:
+        return Response({"error": {"general": ["Event not found."]}}, status=404)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    logger.debug(f"Event updated with code: {url_code}")
+    return Response({"message": ["Event updated successfully."]}, status=200)
