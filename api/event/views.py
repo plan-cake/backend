@@ -3,10 +3,17 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from django.db import DatabaseError, transaction
-from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from api.event.serializers import (
+    CustomCodeSerializer,
+    DateEventCreateSerializer,
+    DateEventEditSerializer,
+    EventCodeSerializer,
+    WeekEventCreateSerializer,
+    WeekEventEditSerializer,
+)
 from api.event.utils import (
     check_custom_code,
     daterange,
@@ -27,21 +34,6 @@ from api.utils import (
 )
 
 logger = logging.getLogger("api")
-
-
-class DateEventCreateSerializer(serializers.Serializer):
-    title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
-    start_date = serializers.DateField(required=True)
-    end_date = serializers.DateField(required=True)
-    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    time_zone = serializers.CharField(required=True, max_length=64)
-    custom_code = serializers.CharField(required=False, max_length=255)
-
-
-class EventCodeSerializer(serializers.Serializer):
-    event_code = serializers.CharField(required=True, max_length=255)
 
 
 class EventCreateThrottle(AnonRateThrottle):
@@ -132,17 +124,6 @@ def create_date_event(request):
     return Response({"event_code": url_code}, status=201)
 
 
-class WeekEventCreateSerializer(serializers.Serializer):
-    title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
-    start_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-    end_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    time_zone = serializers.CharField(required=True, max_length=64)
-    custom_code = serializers.CharField(required=False, max_length=255)
-
-
 @api_endpoint("POST")
 @rate_limit(
     EventCreateThrottle, "Event creation limit reached ({rate}). Try again later."
@@ -228,10 +209,6 @@ def create_week_event(request):
     return Response({"event_code": url_code}, status=201)
 
 
-class CustomCodeSerializer(serializers.Serializer):
-    custom_code = serializers.CharField(required=True, max_length=255)
-
-
 @api_endpoint("POST")
 @validate_json_input(CustomCodeSerializer)
 @validate_output(MessageOutputSerializer)
@@ -250,17 +227,6 @@ def check_code(request):
     return Response({"message": ["Custom code is valid and available."]}, status=200)
 
 
-class DateEventEditSerializer(serializers.Serializer):
-    url_code = serializers.CharField(required=True, max_length=255)
-    title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
-    start_date = serializers.DateField(required=True)
-    end_date = serializers.DateField(required=True)
-    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    time_zone = serializers.CharField(required=True, max_length=64)
-
-
 @api_endpoint("POST")
 @require_auth
 @validate_json_input(DateEventEditSerializer)
@@ -272,7 +238,7 @@ def edit_date_event(request):
     The event must be originally created by the current user.
     """
     user = request.user
-    url_code = request.validated_data.get("url_code")
+    event_code = request.validated_data.get("event_code")
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
     start_date = request.validated_data.get("start_date")
@@ -292,7 +258,7 @@ def edit_date_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=url_code, user_account=user, date_type="SPECIFIC"
+                url_codes=event_code, user_account=user, date_type="SPECIFIC"
             )
             # Get the earliest timeslot
             existing_start_date = (
@@ -348,19 +314,8 @@ def edit_date_event(request):
         logger.error(e)
         return GENERIC_ERR_RESPONSE
 
-    logger.debug(f"Event updated with code: {url_code}")
+    logger.debug(f"Event updated with code: {event_code}")
     return Response({"message": ["Event updated successfully."]}, status=200)
-
-
-class WeekEventEditSerializer(serializers.Serializer):
-    url_code = serializers.CharField(required=True, max_length=255)
-    title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
-    start_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-    end_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    time_zone = serializers.CharField(required=True, max_length=64)
 
 
 @api_endpoint("POST")
@@ -374,7 +329,7 @@ def edit_week_event(request):
     The event must be originally created by the current user.
     """
     user = request.user
-    url_code = request.validated_data.get("url_code")
+    event_code = request.validated_data.get("event_code")
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
     start_weekday = request.validated_data.get("start_weekday")
@@ -393,7 +348,7 @@ def edit_week_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=url_code, user_account=user, date_type="GENERIC"
+                url_codes=event_code, user_account=user, date_type="GENERIC"
             )
 
             errors = validate_weekday_input(
@@ -442,5 +397,5 @@ def edit_week_event(request):
         logger.error(e)
         return GENERIC_ERR_RESPONSE
 
-    logger.debug(f"Event updated with code: {url_code}")
+    logger.debug(f"Event updated with code: {event_code}")
     return Response({"message": ["Event updated successfully."]}, status=200)
