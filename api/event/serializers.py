@@ -19,7 +19,7 @@ class EventInfoSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         DURATION_VALUES = [15, 30, 45, 60]
-        if attrs.get("duration") not in DURATION_VALUES:
+        if "duration" in attrs and attrs.get("duration") not in DURATION_VALUES:
             raise serializers.ValidationError(
                 {
                     "duration": [
