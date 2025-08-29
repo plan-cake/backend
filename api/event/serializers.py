@@ -12,10 +12,22 @@ class EventCodeSerializer(serializers.Serializer):
 
 class EventInfoSerializer(serializers.Serializer):
     title = serializers.CharField(required=True, max_length=50)
-    duration = serializers.ChoiceField(required=False, choices=["15", "30", "45", "60"])
+    duration = serializers.IntegerField(required=False)
     start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
     end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
     time_zone = serializers.CharField(required=True, max_length=64)
+
+    def validate(self, attrs):
+        DURATION_VALUES = [15, 30, 45, 60]
+        if attrs.get("duration") not in DURATION_VALUES:
+            raise serializers.ValidationError(
+                {
+                    "duration": [
+                        f"Invalid value. Valid values are: {', '.join(map(str, DURATION_VALUES))}"
+                    ]
+                }
+            )
+        return super().validate(attrs)
 
 
 class DateEventInfoSerializer(EventInfoSerializer):
