@@ -352,6 +352,24 @@ def require_account_auth(func):
     return wrapper
 
 
+def fix_choice_field_errors(serializer):
+    errors = serializer.errors
+    # Check if there are any ChoiceFields with invalid choices
+    choice_field_errors = [
+        field_name
+        for field_name in errors
+        if isinstance(serializer.fields[field_name], serializers.ChoiceField)
+        and any("is not a valid choice" in err for err in serializer.errors[field_name])
+    ]
+    # Change the error message to say the valid values
+    for choice_field in choice_field_errors:
+        valid_values = serializer.fields[choice_field].choices
+        errors[choice_field] = [
+            f"Invalid value. Valid values are: {', '.join(valid_values)}"
+        ]
+    return errors
+
+
 def validate_json_input(serializer_class):
     """
     A decorator to validate JSON input data for a view function.
@@ -364,25 +382,7 @@ def validate_json_input(serializer_class):
         def wrapper(request, *args, **kwargs):
             serializer = serializer_class(data=request.data)
             if not serializer.is_valid():
-                errors = serializer.errors
-                # Check if there are any ChoiceFields
-                choice_field_errors = [
-                    field_name
-                    for field_name in errors
-                    if isinstance(
-                        serializer.fields[field_name], serializers.ChoiceField
-                    )
-                    and any(
-                        "is not a valid choice" in err
-                        for err in serializer.errors[field_name]
-                    )
-                ]
-                # Change the error message to say the valid values
-                for choice_field in choice_field_errors:
-                    valid_values = serializer.fields[choice_field].choices
-                    errors[choice_field] = [
-                        f"Invalid value. Valid values are: {', '.join(valid_values)}"
-                    ]
+                errors = fix_choice_field_errors(serializer)
                 return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
@@ -420,7 +420,8 @@ def validate_query_param_input(serializer_class):
 
             serializer = serializer_class(data=query_dict)
             if not serializer.is_valid():
-                return Response({"error": serializer.errors}, status=400)
+                errors = fix_choice_field_errors(serializer)
+                return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
