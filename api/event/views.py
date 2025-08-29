@@ -11,6 +11,7 @@ from api.event.serializers import (
     DateEventCreateSerializer,
     DateEventEditSerializer,
     EventCodeSerializer,
+    EventDetailSerializer,
     WeekEventCreateSerializer,
     WeekEventEditSerializer,
 )
@@ -31,6 +32,7 @@ from api.utils import (
     require_auth,
     validate_json_input,
     validate_output,
+    validate_query_param_input,
 )
 
 logger = logging.getLogger("api")
@@ -399,3 +401,79 @@ def edit_week_event(request):
 
     logger.debug(f"Event updated with code: {event_code}")
     return Response({"message": ["Event updated successfully."]}, status=200)
+
+
+@api_endpoint("GET")
+@validate_query_param_input(EventCodeSerializer)
+@validate_output(EventDetailSerializer)
+def get_event_details(request):
+    """
+    Gets details about an event like title, duration, and date/time range.
+
+    This is useful for both displaying an event, and preparing for event editing.
+
+    start_date, end_date, start_weekday, and end_weekday will only have values for their
+    corresponding event types.
+    """
+    event_code = request.validated_data.get("event_code")
+
+    start_date = None
+    end_date = None
+    start_weekday = None
+    end_weekday = None
+    event_type = ""
+    start_hour = -1
+    end_hour = -1
+    try:
+        timeslots = None
+        event = UserEvent.objects.get(url_codes=event_code)
+        if event.date_type == "SPECIFIC":
+            event_type = "Date"
+            timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
+                "timeslot"
+            )
+            start_date = timeslots.first().timeslot.date()
+            end_date = timeslots.last().timeslot.date()
+        else:
+            event_type = "Week"
+            timeslots = EventWeekdayTimeslot.objects.filter(user_event=event).order_by(
+                "weekday", "timeslot"
+            )
+            start_weekday = timeslots.first().weekday
+            end_weekday = timeslots.last().weekday
+        start_hour = timeslots.first().timeslot.hour
+        # The last timeslot will always be XX:45, so just add 1 to the hour
+        end_hour = timeslots.last().timeslot.hour + 1
+
+    except UserEvent.DoesNotExist:
+        return Response({"error": {"general": ["Event not found."]}}, status=404)
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    data = {
+        "title": event.title,
+        "event_type": event_type,
+        "start_hour": start_hour,
+        "end_hour": end_hour,
+        "time_zone": event.time_zone,
+    }
+    # Add the extra fields only if not null, otherwise the serializer complains
+    if event.duration:
+        data["duration"] = event.duration
+    if start_date:
+        data["start_date"] = start_date
+    if end_date:
+        data["end_date"] = end_date
+    if start_weekday:
+        data["start_weekday"] = start_weekday
+    if end_weekday:
+        data["end_weekday"] = end_weekday
+
+    return Response(
+        data,
+        status=200,
+    )
