@@ -8,6 +8,7 @@ from django.db import DatabaseError, transaction
 from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
@@ -386,7 +387,13 @@ def validate_json_input(serializer_class):
                     {"error": {"general": ["Request body must be JSON."]}},
                     status=415,
                 )
-            serializer = serializer_class(data=request.data)
+            try:
+                serializer = serializer_class(data=request.data)
+            except ParseError:
+                return Response(
+                    {"error": {"general": ["Invalid JSON."]}},
+                    status=400,
+                )
             if not serializer.is_valid():
                 errors = fix_choice_field_errors(serializer)
                 return Response({"error": errors}, status=400)
