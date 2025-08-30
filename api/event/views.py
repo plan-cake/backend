@@ -68,11 +68,7 @@ def create_date_event(request):
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
-    try:
-        user_tz = ZoneInfo(time_zone)
-        user_date = datetime.now(user_tz).date()
-    except:
-        return Response({"error": {"time_zone": ["Invalid time zone."]}})
+    user_date = datetime.now(ZoneInfo(time_zone)).date()
     errors = validate_date_input(start_date, end_date, start_hour, end_hour, user_date)
     if errors.keys():
         return Response({"error": errors}, status=400)
@@ -153,10 +149,6 @@ def create_week_event(request):
     custom_code = request.validated_data.get("custom_code")
 
     # Some extra input validation
-    try:
-        ZoneInfo(time_zone)
-    except:
-        return Response({"error": {"time_zone": ["Invalid time zone."]}}, status=400)
     errors = validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour)
     if errors.keys():
         return Response({"error": errors}, status=400)
@@ -249,12 +241,7 @@ def edit_date_event(request):
     end_hour = request.validated_data.get("end_hour")
     time_zone = request.validated_data.get("time_zone")
 
-    try:
-        user_tz = ZoneInfo(time_zone)
-        user_date = datetime.now(user_tz).date()
-    except:
-        return Response({"error": {"time_zone": ["Invalid time zone."]}})
-
+    user_date = datetime.now(ZoneInfo(time_zone)).date()
     try:
         # Do everything inside a transaction to ensure atomicity
         with transaction.atomic():
@@ -339,11 +326,6 @@ def edit_week_event(request):
     start_hour = request.validated_data.get("start_hour")
     end_hour = request.validated_data.get("end_hour")
     time_zone = request.validated_data.get("time_zone")
-
-    try:
-        ZoneInfo(time_zone)
-    except:
-        return Response({"error": {"time_zone": ["Invalid time zone."]}})
 
     try:
         # Do everything inside a transaction to ensure atomicity

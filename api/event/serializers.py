@@ -1,5 +1,7 @@
 from rest_framework import serializers
 
+from api.utils import TimeZoneField
+
 
 # Defining an object-oriented inheritance structure of serializers for DRY
 class CustomCodeSerializer(serializers.Serializer):
@@ -15,7 +17,7 @@ class EventInfoSerializer(serializers.Serializer):
     duration = serializers.IntegerField(required=False)
     start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
     end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    time_zone = serializers.CharField(required=True, max_length=64)
+    time_zone = TimeZoneField(required=True)
 
     def validate(self, attrs):
         DURATION_VALUES = [15, 30, 45, 60]
