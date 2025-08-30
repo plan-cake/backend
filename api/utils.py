@@ -381,6 +381,11 @@ def validate_json_input(serializer_class):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
+            if request.content_type != "application/json":
+                return Response(
+                    {"error": {"general": ["Request body must be JSON."]}},
+                    status=415,
+                )
             serializer = serializer_class(data=request.data)
             if not serializer.is_valid():
                 errors = fix_choice_field_errors(serializer)
