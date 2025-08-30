@@ -40,6 +40,8 @@ def get_readable_field_name(field_name):
             return "string"
         case "ChoiceField":
             return "string"
+        case "TimeZoneField":
+            return "string"
         case _:
             return "object"
 
