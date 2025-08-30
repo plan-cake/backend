@@ -113,6 +113,9 @@ class EventWeekdayTimeslot(models.Model):
     weekday = models.PositiveSmallIntegerField()
     timeslot = models.TimeField()
 
+    class Meta:
+        indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
+
 
 class EventDateTimeslot(models.Model):
     event_date_timeslot_id = models.AutoField(primary_key=True)
@@ -120,6 +123,9 @@ class EventDateTimeslot(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
     timeslot = DateTimeNoTZField()
+
+    class Meta:
+        indexes = [models.Index(fields=["user_event", "timeslot"])]
 
 
 class EventWeekdayAvailability(models.Model):
