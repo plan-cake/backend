@@ -85,17 +85,17 @@ def validate_date_input(
     if start_date < earliest_date:
         if editing:
             errors["start_date"] = [
-                "start_date cannot be set earlier than today, or moved earlier if already before today."
+                "Start date cannot be set earlier than today, or moved earlier if already before today."
             ]
         else:
-            errors["start_date"] = ["start_date must be today or in the future."]
+            errors["start_date"] = ["Start date must be today or in the future."]
     if start_date > end_date:
-        errors["end_date"] = ["end_date must be on or after start_date."]
+        errors["end_date"] = ["End date must be on or after start date."]
     if start_hour >= end_hour:
-        errors["end_hour"] = ["end_hour must be after start_hour."]
+        errors["end_hour"] = ["End hour must be after start hour."]
     if (end_date - start_date).days > MAX_EVENT_DAYS:
         errors["end_date"] = [
-            f"end_date must be within {MAX_EVENT_DAYS} days of start_date."
+            f"End date must be within {MAX_EVENT_DAYS} days of start date."
         ]
 
     return errors
@@ -104,7 +104,7 @@ def validate_date_input(
 def validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour):
     errors = {}
     if start_weekday > end_weekday:
-        errors["end_weekday"] = ["end_weekday must be on or after start_weekday."]
+        errors["end_weekday"] = ["End weekday must be on or after start weekday."]
     if start_hour >= end_hour:
-        errors["end_hour"] = ["end_hour must be after start_hour."]
+        errors["end_hour"] = ["End hour must be after start hour."]
     return errors
