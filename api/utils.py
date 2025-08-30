@@ -2,6 +2,7 @@ import functools
 import logging
 import uuid
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 from django.db import DatabaseError, transaction
 from django.db.models import Q
@@ -548,3 +549,13 @@ def rate_limit(
         return wrapper
 
     return decorator
+
+
+class TimeZoneField(serializers.CharField):
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        try:
+            ZoneInfo(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid time zone.")
+        return value
