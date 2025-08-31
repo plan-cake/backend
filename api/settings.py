@@ -110,8 +110,8 @@ BASE_URL = env("BASE_URL")
 
 # Automated tasks
 CELERY_BEAT_SCHEDULE = {
-    "daily_cleanup": {
-        "task": "api.tasks.daily_cleanup",
+    "daily_duties": {
+        "task": "api.tasks.daily_duties",
         "schedule": crontab(hour=0, minute=0),  # Every day at midnight
     },
 }

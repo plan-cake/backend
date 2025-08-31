@@ -73,9 +73,10 @@ def url_code_cleanup():
 
 
 @shared_task
-def daily_cleanup():
+def daily_duties():
     """
-    Cleans up expired data in the database.
+    Performs daily duties, including:
+    - Cleaning up expired data in the database.
     """
     session_cleanup()
     guest_cleanup()
