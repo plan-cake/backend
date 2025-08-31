@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from django.db import DatabaseError, transaction
+from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
@@ -360,11 +361,14 @@ def edit_week_event(request):
             )
             to_delete = existing_timeslots - edited_timeslots
             to_add = edited_timeslots - existing_timeslots
-            EventWeekdayTimeslot.objects.filter(
-                user_event=event,
-                weekday__in=[wd for wd, _ in to_delete],
-                timeslot__in=[ts for _, ts in to_delete],
-            ).delete()
+
+            if to_delete:
+                # Make sure the query matches each unique weekday, timeslot pair
+                query = Q()
+                for wd, ts in to_delete:
+                    query |= Q(user_event=event, weekday=wd, timeslot=ts)
+                EventWeekdayTimeslot.objects.filter(query).delete()
+
             EventWeekdayTimeslot.objects.bulk_create(
                 [
                     EventWeekdayTimeslot(user_event=event, weekday=wd, timeslot=ts)
