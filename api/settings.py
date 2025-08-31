@@ -1,9 +1,11 @@
 import logging
 import os
+import traceback
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
+from django.core.mail import send_mail
 from rest_framework.response import Response
 
 from api.logging import FancyFormatter
@@ -99,6 +101,7 @@ AWS_SES_SECRET_ACCESS_KEY = env("AWS_SES_SECRET_ACCESS_KEY")
 AWS_SES_REGION_NAME = env("AWS_SES_REGION_NAME")
 AWS_SES_REGION_ENDPOINT = env("AWS_SES_REGION_ENDPOINT")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+ADMIN_EMAILS = env.list("ADMIN_EMAILS", default=[])
 SEND_EMAILS = env.bool("SEND_EMAILS", default=False)
 
 BASE_URL = env("BASE_URL")
@@ -164,6 +167,20 @@ LOGGING = {
 class PlancakeLogger(logging.Logger):
     def db_error(self, msg, *args, **kwargs):
         self.error("Database error: %s", msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        super().critical(msg, *args, **kwargs)
+
+        # Send an email to admins
+        if SEND_EMAILS:
+            stack_trace = traceback.format_stack()
+            send_mail(
+                subject=f"Plancake - Critical Error",
+                message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
+                from_email=DEFAULT_FROM_EMAIL,
+                recipient_list=ADMIN_EMAILS,
+                fail_silently=False,
+            )
 
 
 # Now any logger in the project will have access to this class
