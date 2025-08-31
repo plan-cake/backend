@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 import traceback
 from pathlib import Path
 
@@ -103,6 +104,7 @@ AWS_SES_REGION_ENDPOINT = env("AWS_SES_REGION_ENDPOINT")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 ADMIN_EMAILS = env.list("ADMIN_EMAILS", default=[])
 SEND_EMAILS = env.bool("SEND_EMAILS", default=False)
+CRITICAL_EMAIL_INTERVAL_SECONDS = 1800  # 30 minutes
 
 BASE_URL = env("BASE_URL")
 
@@ -165,6 +167,8 @@ LOGGING = {
 # Custom logger just to add some of my own custom logging functions
 # We love DRY!!!
 class PlancakeLogger(logging.Logger):
+    _last_email_time = 0
+
     def db_error(self, msg, *args, **kwargs):
         self.error("Database error: %s", msg, *args, **kwargs)
 
@@ -173,14 +177,17 @@ class PlancakeLogger(logging.Logger):
 
         # Send an email to admins
         if SEND_EMAILS:
-            stack_trace = "".join(traceback.format_stack())
-            send_mail(
-                subject=f"Plancake - Critical Error",
-                message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
-                from_email=DEFAULT_FROM_EMAIL,
-                recipient_list=ADMIN_EMAILS,
-                fail_silently=False,
-            )
+            now = time.time()
+            if now - self._last_email_time > CRITICAL_EMAIL_INTERVAL_SECONDS:
+                stack_trace = "".join(traceback.format_stack())
+                send_mail(
+                    subject=f"Plancake - Critical Error",
+                    message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
+                    from_email=DEFAULT_FROM_EMAIL,
+                    recipient_list=ADMIN_EMAILS,
+                    fail_silently=False,
+                )
+                self._last_email_time = now
 
 
 # Now any logger in the project will have access to this class
