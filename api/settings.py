@@ -180,14 +180,17 @@ class PlancakeLogger(logging.Logger):
             now = time.time()
             if now - self._last_email_time > CRITICAL_EMAIL_INTERVAL_SECONDS:
                 stack_trace = "".join(traceback.format_stack())
-                send_mail(
-                    subject=f"Plancake - Critical Error",
-                    message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
-                    from_email=DEFAULT_FROM_EMAIL,
-                    recipient_list=ADMIN_EMAILS,
-                    fail_silently=False,
-                )
-                self._last_email_time = now
+                try:
+                    send_mail(
+                        subject=f"Plancake - Critical Error",
+                        message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
+                        from_email=DEFAULT_FROM_EMAIL,
+                        recipient_list=ADMIN_EMAILS,
+                        fail_silently=False,
+                    )
+                    self._last_email_time = now
+                except Exception as e:
+                    self.error("Failed to send critical error email: %s", e)
 
 
 # Now any logger in the project will have access to this class
