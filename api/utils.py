@@ -2,7 +2,7 @@ import functools
 import logging
 import uuid
 from datetime import datetime, timedelta
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.db import DatabaseError, transaction
 from django.db.models import Q
@@ -568,6 +568,6 @@ class TimeZoneField(serializers.CharField):
         value = super().to_internal_value(data)
         try:
             ZoneInfo(value)
-        except Exception:
+        except ZoneInfoNotFoundError:
             raise serializers.ValidationError("Invalid time zone.")
         return value
