@@ -84,7 +84,7 @@ def create_date_event(request):
         # Generate a random code if not provided
         try:
             url_code = generate_code()
-        except:
+        except Exception:
             logger.critical("Failed to generate a unique URL code.")
             return GENERIC_ERR_RESPONSE
 
@@ -164,7 +164,7 @@ def create_week_event(request):
         # Generate a random code if not provided
         try:
             url_code = generate_code()
-        except:
+        except Exception:
             logger.critical("Failed to generate a unique URL code.")
             return GENERIC_ERR_RESPONSE
 
