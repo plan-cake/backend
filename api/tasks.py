@@ -68,7 +68,7 @@ def url_code_cleanup():
     Removes expired event URL codes.
     """
     UrlCode.objects.filter(
-        created_at__lt=datetime.now() - timedelta(seconds=URL_CODE_EXP_SECONDS)
+        last_used__lt=datetime.now() - timedelta(seconds=URL_CODE_EXP_SECONDS)
     ).delete()
 
 
