@@ -454,9 +454,9 @@ def get_event_details(request):
         data["start_date"] = start_date
     if end_date:
         data["end_date"] = end_date
-    if start_weekday:
+    if start_weekday is not None:
         data["start_weekday"] = start_weekday
-    if end_weekday:
+    if end_weekday is not None:
         data["end_weekday"] = end_weekday
 
     return Response(
