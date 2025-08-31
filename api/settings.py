@@ -173,7 +173,7 @@ class PlancakeLogger(logging.Logger):
 
         # Send an email to admins
         if SEND_EMAILS:
-            stack_trace = traceback.format_stack()
+            stack_trace = "".join(traceback.format_stack())
             send_mail(
                 subject=f"Plancake - Critical Error",
                 message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
