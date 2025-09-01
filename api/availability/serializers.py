@@ -25,7 +25,7 @@ class AvailabilitySerializer(serializers.Serializer):
     )
 
 
-class DateAvailabilityAddSerializer(
+class AvailabilityAddSerializer(
     EventCodeSerializer, DisplayNameSerializer, AvailabilitySerializer
 ):
     time_zone = TimeZoneField(required=True)

@@ -6,8 +6,8 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.availability.serializers import (
+    AvailabilityAddSerializer,
     AvailabilitySerializer,
-    DateAvailabilityAddSerializer,
     DisplayNameCheckSerializer,
     EventCodeSerializer,
 )
@@ -50,7 +50,7 @@ class AvailabilityInputInvalidError(Exception):
     "Availability submission limit reached ({rate}). Try again later.",
 )
 @require_auth
-@validate_json_input(DateAvailabilityAddSerializer)
+@validate_json_input(AvailabilityAddSerializer)
 @validate_output(MessageOutputSerializer)
 def add_availability(request):
     """
