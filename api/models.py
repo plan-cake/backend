@@ -171,6 +171,7 @@ class EventWeekdayAvailability(models.Model):
                 name="unique_participant_weekday_timeslot",
             )
         ]
+        indexes = [models.Index(fields=["event_participant"])]
 
 
 class EventDateAvailability(models.Model):
@@ -194,3 +195,4 @@ class EventDateAvailability(models.Model):
                 name="unique_participant_date_timeslot",
             )
         ]
+        indexes = [models.Index(fields=["event_participant"])]
