@@ -1,12 +1,15 @@
 import logging
+from datetime import datetime
 
 from django.db import DatabaseError, transaction
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.availability.serializers import (
+    AvailabilitySerializer,
     DateAvailabilityAddSerializer,
     DisplayNameCheckSerializer,
+    EventCodeSerializer,
 )
 from api.availability.utils import (
     EventGridDimensionError,
@@ -27,6 +30,7 @@ from api.utils import (
     require_auth,
     validate_json_input,
     validate_output,
+    validate_query_param_input,
 )
 
 logger = logging.getLogger("api")
@@ -199,6 +203,83 @@ def check_display_name(request):
         return Response(
             {"error": {"event_code": ["Event not found."]}},
             status=404,
+        )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+
+@api_endpoint("GET")
+@require_auth
+@validate_query_param_input(EventCodeSerializer)
+@validate_output(AvailabilitySerializer)
+def get_self_availability(request):
+    """
+    Gets the grid of availability submitted by the current user.
+
+    An error will be returned if the user has not participated in the specified event.
+    """
+    user = request.user
+    event_code = request.validated_data.get("event_code")
+
+    try:
+        event = UserEvent.objects.get(url_codes=event_code)
+        participant = EventParticipant.objects.get(user_event=event, user_account=user)
+
+        if event.date_type == UserEvent.EventType.SPECIFIC:
+            availabilities = (
+                EventDateAvailability.objects.filter(event_participant=participant)
+                .select_related("event_date_timeslot")
+                .order_by("event_date_timeslot__timeslot")
+            )
+            data = []
+            current_day = [availabilities[0].is_available]
+            last_date = availabilities[0].event_date_timeslot.timeslot.date()
+            for timeslot in availabilities[1:]:
+                timeslot_date = timeslot.event_date_timeslot.timeslot.date()
+                if timeslot_date != last_date:
+                    data.append(current_day)
+                    current_day = []
+                    last_date = timeslot_date
+                current_day.append(timeslot.is_available)
+            data.append(current_day)
+
+            return Response({"availability": data}, status=200)
+        else:
+            availabilities = (
+                EventWeekdayAvailability.objects.filter(event_participant=participant)
+                .select_related("event_weekday_timeslot")
+                .order_by(
+                    "event_weekday_timeslot__weekday",
+                    "event_weekday_timeslot__timeslot",
+                )
+            )
+            data = []
+            current_day = [availabilities[0].is_available]
+            last_weekday = availabilities[0].event_weekday_timeslot.weekday
+            for timeslot in availabilities[1:]:
+                timeslot_weekday = timeslot.event_weekday_timeslot.weekday
+                if timeslot_weekday != last_weekday:
+                    data.append(current_day)
+                    current_day = []
+                    last_weekday = timeslot_weekday
+                current_day.append(timeslot.is_available)
+            data.append(current_day)
+
+            return Response({"availability": data}, status=200)
+
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
+        )
+    except EventParticipant.DoesNotExist:
+        return Response(
+            {"error": {"general": ["User has not participated in this event."]}},
+            status=400,
         )
     except DatabaseError as e:
         logger.db_error(e)

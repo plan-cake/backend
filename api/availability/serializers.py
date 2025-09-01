@@ -15,7 +15,7 @@ class DisplayNameCheckSerializer(EventCodeSerializer, DisplayNameSerializer):
     pass
 
 
-class DateAvailabilityAddSerializer(EventCodeSerializer, DisplayNameSerializer):
+class AvailabilitySerializer(serializers.Serializer):
     availability = serializers.ListField(
         child=serializers.ListField(
             child=serializers.BooleanField(), required=True, min_length=4
@@ -23,4 +23,9 @@ class DateAvailabilityAddSerializer(EventCodeSerializer, DisplayNameSerializer):
         required=True,
         min_length=1,
     )
+
+
+class DateAvailabilityAddSerializer(
+    EventCodeSerializer, DisplayNameSerializer, AvailabilitySerializer
+):
     time_zone = TimeZoneField(required=True)
