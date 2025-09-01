@@ -101,8 +101,19 @@ class EventParticipant(models.Model):
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="events_participated"
     )
-    display_name = models.CharField(max_length=25, null=True)
-    time_zone = models.CharField(max_length=64, null=True)
+    display_name = models.CharField(max_length=25)
+    time_zone = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "user_account"], name="unique_event_participant"
+            ),
+            models.UniqueConstraint(
+                fields=["user_event", "display_name"],
+                name="unique_display_name_per_event",
+            ),
+        ]
 
 
 class EventWeekdayTimeslot(models.Model):
