@@ -5,7 +5,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.availability.serializers import DateAvailabilityAddSerializer
-from api.availability.utils import EventGridDimensionError, get_event_grid
+from api.availability.utils import (
+    EventGridDimensionError,
+    check_name_available,
+    get_event_grid,
+)
 from api.models import (
     EventDateAvailability,
     EventParticipant,
@@ -61,6 +65,17 @@ def add_availability(request):
     try:
         with transaction.atomic():
             user_event = UserEvent.objects.get(url_codes=event_code)
+
+            if not check_name_available(user_event, user, display_name):
+                return Response(
+                    {
+                        "error": {
+                            "display_name": ["Name is taken."],
+                        }
+                    },
+                    status=400,
+                )
+
             timeslots, num_days, num_times = get_event_grid(user_event)
 
             if len(availability) != num_days:
