@@ -19,7 +19,7 @@ class EndpointSerializer(serializers.Serializer):
 
 
 class DocsSerializer(serializers.Serializer):
-    data = serializers.ListField(child=EndpointSerializer())
+    endpoints = serializers.ListField(child=EndpointSerializer())
 
 
 @api_endpoint("GET")
@@ -50,4 +50,4 @@ def get_docs(request):
                 "rate_limit": metadata.rate_limit,
             }
         )
-    return Response({"data": endpoints})
+    return Response({"endpoints": endpoints})
