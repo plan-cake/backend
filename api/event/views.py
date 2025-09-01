@@ -100,7 +100,7 @@ def create_date_event(request):
             new_event = UserEvent.objects.create(
                 user_account=user,
                 title=title,
-                date_type="SPECIFIC",
+                date_type=UserEvent.EventType.SPECIFIC,
                 duration=duration,
                 time_zone=time_zone,
             )
@@ -180,7 +180,7 @@ def create_week_event(request):
             new_event = UserEvent.objects.create(
                 user_account=user,
                 title=title,
-                date_type="GENERIC",
+                date_type=UserEvent.EventType.GENERIC,
                 duration=duration,
                 time_zone=time_zone,
             )
@@ -255,7 +255,9 @@ def edit_date_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code, user_account=user, date_type="SPECIFIC"
+                url_codes=event_code,
+                user_account=user,
+                date_type=UserEvent.EventType.SPECIFIC,
             )
             # Get the earliest timeslot
             existing_start_date = (
@@ -354,7 +356,9 @@ def edit_week_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code, user_account=user, date_type="GENERIC"
+                url_codes=event_code,
+                user_account=user,
+                date_type=UserEvent.EventType.GENERIC,
             )
 
             errors = validate_weekday_input(
@@ -445,7 +449,7 @@ def get_event_details(request):
     try:
         timeslots = None
         event = UserEvent.objects.get(url_codes=event_code)
-        if event.date_type == "SPECIFIC":
+        if event.date_type == UserEvent.EventType.SPECIFIC:
             event_type = "Date"
             timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
                 "timeslot"
