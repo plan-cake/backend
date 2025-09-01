@@ -300,6 +300,9 @@ def get_self_availability(request):
 def get_all_availability(request):
     """
     Gets the availability submitted by all event participants.
+
+    The response format is a 3D array. The outermost layer is days, while the middle is
+    timeslots and the innermost is the display names of available users for that timeslot.
     """
     event_code = request.validated_data.get("event_code")
 
