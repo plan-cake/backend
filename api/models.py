@@ -77,6 +77,7 @@ class UserEvent(models.Model):
         choices=EventType.choices,
     )
     duration = models.PositiveSmallIntegerField(null=True)
+    time_zone = models.CharField(max_length=64)
     created_at = DateTimeNoTZField(auto_now_add=True)
     updated_at = DateTimeNoTZField(auto_now=True)
 
@@ -101,7 +102,7 @@ class EventParticipant(models.Model):
         UserAccount, on_delete=models.CASCADE, related_name="events_participated"
     )
     display_name = models.CharField(max_length=25, null=True)
-    time_zone = models.CharField(max_length=50, null=True)
+    time_zone = models.CharField(max_length=64, null=True)
 
 
 class EventWeekdayTimeslot(models.Model):
@@ -112,6 +113,9 @@ class EventWeekdayTimeslot(models.Model):
     weekday = models.PositiveSmallIntegerField()
     timeslot = models.TimeField()
 
+    class Meta:
+        indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
+
 
 class EventDateTimeslot(models.Model):
     event_date_timeslot_id = models.AutoField(primary_key=True)
@@ -119,6 +123,9 @@ class EventDateTimeslot(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
     timeslot = DateTimeNoTZField()
+
+    class Meta:
+        indexes = [models.Index(fields=["user_event", "timeslot"])]
 
 
 class EventWeekdayAvailability(models.Model):

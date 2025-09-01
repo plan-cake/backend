@@ -2,11 +2,13 @@ import functools
 import logging
 import uuid
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from django.db import DatabaseError, transaction
 from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.decorators import api_view
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
@@ -352,6 +354,24 @@ def require_account_auth(func):
     return wrapper
 
 
+def fix_choice_field_errors(serializer):
+    errors = serializer.errors
+    # Check if there are any ChoiceFields with invalid choices
+    choice_field_errors = [
+        field_name
+        for field_name in errors
+        if isinstance(serializer.fields[field_name], serializers.ChoiceField)
+        and any("is not a valid choice" in err for err in serializer.errors[field_name])
+    ]
+    # Change the error message to say the valid values
+    for choice_field in choice_field_errors:
+        valid_values = serializer.fields[choice_field].choices
+        errors[choice_field] = [
+            f"Invalid value. Valid values are: {', '.join(valid_values)}"
+        ]
+    return errors
+
+
 def validate_json_input(serializer_class):
     """
     A decorator to validate JSON input data for a view function.
@@ -362,9 +382,21 @@ def validate_json_input(serializer_class):
     def decorator(func):
         @functools.wraps(func)
         def wrapper(request, *args, **kwargs):
-            serializer = serializer_class(data=request.data)
+            if request.content_type != "application/json":
+                return Response(
+                    {"error": {"general": ["Request body must be JSON."]}},
+                    status=415,
+                )
+            try:
+                serializer = serializer_class(data=request.data)
+            except ParseError:
+                return Response(
+                    {"error": {"general": ["Invalid JSON."]}},
+                    status=400,
+                )
             if not serializer.is_valid():
-                return Response({"error": serializer.errors}, status=400)
+                errors = fix_choice_field_errors(serializer)
+                return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
@@ -401,7 +433,8 @@ def validate_query_param_input(serializer_class):
 
             serializer = serializer_class(data=query_dict)
             if not serializer.is_valid():
-                return Response({"error": serializer.errors}, status=400)
+                errors = fix_choice_field_errors(serializer)
+                return Response({"error": errors}, status=400)
             request.validated_data = serializer.validated_data
             return func(request, *args, **kwargs)
 
@@ -528,3 +561,13 @@ def rate_limit(
         return wrapper
 
     return decorator
+
+
+class TimeZoneField(serializers.CharField):
+    def to_internal_value(self, data):
+        value = super().to_internal_value(data)
+        try:
+            ZoneInfo(value)
+        except ZoneInfoNotFoundError:
+            raise serializers.ValidationError("Invalid time zone.")
+        return value

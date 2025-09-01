@@ -1,9 +1,12 @@
 import logging
 import os
+import time
+import traceback
 from pathlib import Path
 
 import environ
 from celery.schedules import crontab
+from django.core.mail import send_mail
 from rest_framework.response import Response
 
 from api.logging import FancyFormatter
@@ -74,6 +77,7 @@ REST_FRAMEWORK = {
         "guest_account_creation": "2/hour",
         "login": "10/hour",
         "password_reset": "3/hour",
+        "event_creation": "6/hour",
     },
 }
 
@@ -84,6 +88,8 @@ LONG_SESS_EXP_SECONDS = 31536000  # 1 year
 EMAIL_CODE_EXP_SECONDS = 1800  # 30 minutes
 
 PWD_RESET_EXP_SECONDS = 1800  # 30 minutes
+
+URL_CODE_EXP_SECONDS = 1209600  # 14 days
 
 GENERIC_ERR_RESPONSE = Response(
     {"error": {"general": ["An unknown error has occurred."]}}, status=500
@@ -96,14 +102,16 @@ AWS_SES_SECRET_ACCESS_KEY = env("AWS_SES_SECRET_ACCESS_KEY")
 AWS_SES_REGION_NAME = env("AWS_SES_REGION_NAME")
 AWS_SES_REGION_ENDPOINT = env("AWS_SES_REGION_ENDPOINT")
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
+ADMIN_EMAILS = env.list("ADMIN_EMAILS", default=[])
 SEND_EMAILS = env.bool("SEND_EMAILS", default=False)
+CRITICAL_EMAIL_INTERVAL_SECONDS = 1800  # 30 minutes
 
 BASE_URL = env("BASE_URL")
 
 # Automated tasks
 CELERY_BEAT_SCHEDULE = {
-    "daily_cleanup": {
-        "task": "api.tasks.daily_cleanup",
+    "daily_duties": {
+        "task": "api.tasks.daily_duties",
         "schedule": crontab(hour=0, minute=0),  # Every day at midnight
     },
 }
@@ -159,9 +167,37 @@ LOGGING = {
 # Custom logger just to add some of my own custom logging functions
 # We love DRY!!!
 class PlancakeLogger(logging.Logger):
+    _last_email_time = 0
+
     def db_error(self, msg, *args, **kwargs):
         self.error("Database error: %s", msg, *args, **kwargs)
+
+    def critical(self, msg, *args, **kwargs):
+        super().critical(msg, *args, **kwargs)
+
+        # Send an email to admins
+        if SEND_EMAILS:
+            now = time.time()
+            if now - self._last_email_time > CRITICAL_EMAIL_INTERVAL_SECONDS:
+                stack_trace = "".join(traceback.format_stack())
+                try:
+                    send_mail(
+                        subject=f"Plancake - Critical Error",
+                        message=f"A critical error occurred in the application: {msg}\n\nStack Trace:\n{stack_trace}",
+                        from_email=DEFAULT_FROM_EMAIL,
+                        recipient_list=ADMIN_EMAILS,
+                        fail_silently=False,
+                    )
+                    self._last_email_time = now
+                except Exception as e:
+                    self.error("Failed to send critical error email: %s", e)
 
 
 # Now any logger in the project will have access to this class
 logging.setLoggerClass(PlancakeLogger)
+
+RAND_URL_CODE_LENGTH = 8
+
+RAND_URL_CODE_ATTEMPTS = 4
+
+MAX_EVENT_DAYS = 30  # 1 month
