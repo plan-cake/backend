@@ -401,3 +401,41 @@ def get_all_availability(request):
     except Exception as e:
         logger.error(e)
         return GENERIC_ERR_RESPONSE
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(EventCodeSerializer)
+@validate_output(MessageOutputSerializer)
+def remove_self_availability(request):
+    """
+    Removes the current user's availability for an event.
+
+    An error will be returned if the user has not participated in the specified event.
+    """
+    user = request.user
+    event_code = request.validated_data.get("event_code")
+
+    try:
+        event = UserEvent.objects.get(url_codes=event_code)
+        # Because of the foreign key cascades, this should remove everything
+        EventParticipant.objects.get(user_event=event, user_account=user).delete()
+
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
+        )
+    except EventParticipant.DoesNotExist:
+        return Response(
+            {"error": {"general": ["User has not participated in this event."]}},
+            status=400,
+        )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    return Response({"message": ["Availability removed successfully."]}, status=200)
