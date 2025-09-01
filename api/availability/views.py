@@ -439,3 +439,48 @@ def remove_self_availability(request):
         return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Availability removed successfully."]}, status=200)
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(DisplayNameCheckSerializer)
+@validate_output(MessageOutputSerializer)
+def remove_availability(request):
+    """
+    Removes the specified user's availability for an event, identified by display name.
+
+    This can only be done by the event creator.
+    """
+    user = request.user
+    event_code = request.validated_data.get("event_code")
+    display_name = request.validated_data.get("display_name")
+
+    try:
+        event = UserEvent.objects.get(url_codes=event_code)
+        if event.user_account != user:
+            return Response(
+                {"error": {"general": ["User must be event creator."]}}, status=403
+            )
+        # Because of the foreign key cascades, this should remove everything
+        EventParticipant.objects.get(
+            user_event=event, display_name=display_name
+        ).delete()
+
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
+        )
+    except EventParticipant.DoesNotExist:
+        return Response(
+            {"error": {"general": ["Event participant not found."]}},
+            status=404,
+        )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+    return Response({"message": ["Availability removed successfully."]}, status=200)
