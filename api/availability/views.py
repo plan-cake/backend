@@ -310,6 +310,19 @@ def get_all_availability(request):
         event = UserEvent.objects.get(url_codes=event_code)
         participants = event.participants.all()
 
+        if not len(participants):
+            _, num_days, num_times = get_event_grid(event)
+
+            return Response(
+                {
+                    "participants": [],
+                    "availability": [
+                        [[] for _ in range(num_times)] for _ in range(num_days)
+                    ],
+                },
+                status=200,
+            )
+
         if event.date_type == UserEvent.EventType.SPECIFIC:
             availabilities = (
                 EventDateAvailability.objects.filter(event_participant__in=participants)
