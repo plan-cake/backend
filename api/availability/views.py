@@ -145,6 +145,11 @@ def add_availability(request):
     except EventGridDimensionError as e:
         logger.critical(e)
         return GENERIC_ERR_RESPONSE
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
+        )
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
