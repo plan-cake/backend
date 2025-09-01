@@ -4,7 +4,10 @@ from django.db import DatabaseError, transaction
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from api.availability.serializers import DateAvailabilityAddSerializer
+from api.availability.serializers import (
+    DateAvailabilityAddSerializer,
+    DisplayNameCheckSerializer,
+)
 from api.availability.utils import (
     EventGridDimensionError,
     check_name_available,
@@ -156,3 +159,45 @@ def add_availability(request):
         {"message": [f"Availability {'added' if new else 'updated'} successfully."]},
         status=201,
     )
+
+
+@api_endpoint("POST")
+@require_auth
+@validate_json_input(DisplayNameCheckSerializer)
+@validate_output(MessageOutputSerializer)
+def check_display_name(request):
+    """
+    Checks if a display name is available for an event.
+
+    If the name is used by the current user, it will be considered available.
+
+    Similarly to the "check_custom_code" endpoint, this should be called before trying to
+    add availability to avoid errors and rate limits.
+    """
+    user = request.user
+    event_code = request.validated_data.get("event_code")
+    display_name = request.validated_data.get("display_name")
+
+    try:
+        event = UserEvent.objects.get(url_codes=event_code)
+        if check_name_available(event, user, display_name):
+            return Response(
+                {"message": ["Name is available."]},
+                status=200,
+            )
+        else:
+            return Response(
+                {"error": {"display_name": ["Name is taken."]}},
+                status=400,
+            )
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
+        )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
