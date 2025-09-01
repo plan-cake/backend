@@ -9,6 +9,7 @@ from api.availability.serializers import (
     AvailabilityAddSerializer,
     AvailabilitySerializer,
     DisplayNameCheckSerializer,
+    EventAvailabilitySerializer,
     EventCodeSerializer,
 )
 from api.availability.utils import (
@@ -284,6 +285,112 @@ def get_self_availability(request):
         return Response(
             {"error": {"general": ["User has not participated in this event."]}},
             status=400,
+        )
+    except DatabaseError as e:
+        logger.db_error(e)
+        return GENERIC_ERR_RESPONSE
+    except Exception as e:
+        logger.error(e)
+        return GENERIC_ERR_RESPONSE
+
+
+@api_endpoint("GET")
+@validate_query_param_input(EventCodeSerializer)
+@validate_output(EventAvailabilitySerializer)
+def get_all_availability(request):
+    """
+    Gets the availability submitted by all event participants.
+    """
+    event_code = request.validated_data.get("event_code")
+
+    try:
+        event = UserEvent.objects.get(url_codes=event_code)
+        participants = event.participants.all()
+
+        if event.date_type == UserEvent.EventType.SPECIFIC:
+            availabilities = (
+                EventDateAvailability.objects.filter(event_participant__in=participants)
+                .select_related("event_date_timeslot")
+                .order_by(
+                    "event_date_timeslot__timeslot", "event_participant__display_name"
+                )
+            )
+            timeslot_dict = {}
+            for t in availabilities:
+                timeslot = t.event_date_timeslot.timeslot
+                if timeslot not in timeslot_dict:
+                    timeslot_dict[timeslot] = []
+                if t.is_available:
+                    timeslot_dict[timeslot].append(t.event_participant.display_name)
+
+            timeslots = sorted(timeslot_dict.keys())
+            data = []
+            current_day = [timeslot_dict[timeslots[0]]]
+            last_date = timeslots[0].date()
+            for timeslot in timeslots[1:]:
+                timeslot_date = timeslot.date()
+                if timeslot_date != last_date:
+                    data.append(current_day)
+                    current_day = []
+                    last_date = timeslot_date
+                current_day.append(timeslot_dict[timeslot])
+            data.append(current_day)
+
+            return Response(
+                {
+                    "participants": [p.display_name for p in participants],
+                    "availability": data,
+                },
+                status=200,
+            )
+        else:
+            availabilities = (
+                EventWeekdayAvailability.objects.filter(
+                    event_participant__in=participants
+                )
+                .select_related("event_weekday_timeslot")
+                .order_by(
+                    "event_weekday_timeslot__weekday",
+                    "event_weekday_timeslot__timeslot",
+                    "event_participant__display_name",
+                )
+            )
+            timeslot_dict = {}
+            for t in availabilities:
+                timeslot = (
+                    t.event_weekday_timeslot.weekday,
+                    t.event_weekday_timeslot.timeslot,
+                )
+                if timeslot not in timeslot_dict:
+                    timeslot_dict[timeslot] = []
+                if t.is_available:
+                    timeslot_dict[timeslot].append(t.event_participant.display_name)
+
+            timeslots = sorted(timeslot_dict.keys())
+            data = []
+            current_day = [timeslot_dict[timeslots[0]]]
+            last_weekday = timeslots[0][0]
+            for timeslot in timeslots[1:]:
+                timeslot_weekday = timeslot[0]
+                if timeslot_weekday != last_weekday:
+                    data.append(current_day)
+                    current_day = []
+                    last_weekday = timeslot_weekday
+                current_day.append(timeslot_dict[timeslot])
+            data.append(current_day)
+
+            return Response(
+                {
+                    "participants": [p.display_name for p in participants],
+                    "availability": data,
+                },
+                status=200,
+            )
+
+    except UserEvent.DoesNotExist:
+        return Response(
+            {"error": {"event_code": ["Event not found."]}},
+            status=404,
         )
     except DatabaseError as e:
         logger.db_error(e)

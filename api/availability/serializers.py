@@ -29,3 +29,22 @@ class AvailabilityAddSerializer(
     EventCodeSerializer, DisplayNameSerializer, AvailabilitySerializer
 ):
     time_zone = TimeZoneField(required=True)
+
+
+class EventAvailabilitySerializer(serializers.Serializer):
+    participants = serializers.ListField(
+        child=serializers.CharField(required=True, max_length=25),
+        required=True,
+    )
+    availability = serializers.ListField(
+        child=serializers.ListField(
+            child=serializers.ListField(
+                child=serializers.CharField(required=True, max_length=25),
+                required=True,
+            ),
+            required=True,
+            min_length=4,
+        ),
+        required=True,
+        min_length=1,
+    )
