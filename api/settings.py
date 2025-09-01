@@ -78,6 +78,7 @@ REST_FRAMEWORK = {
         "login": "10/hour",
         "password_reset": "3/hour",
         "event_creation": "6/hour",
+        "availability_add": "6/hour",
     },
 }
 
