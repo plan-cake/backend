@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 
 from django.db import DatabaseError, transaction
 from rest_framework.response import Response

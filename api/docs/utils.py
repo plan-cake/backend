@@ -1,7 +1,6 @@
 import copy
 
 from django.urls import get_resolver
-from rest_framework import serializers
 
 
 def get_endpoints(urlpatterns, prefix=""):

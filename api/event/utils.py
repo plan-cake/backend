@@ -2,7 +2,6 @@ import random
 import re
 import string
 from datetime import datetime, time, timedelta
-from zoneinfo import ZoneInfo
 
 from api.models import UrlCode
 from api.settings import (
