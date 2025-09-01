@@ -109,6 +109,10 @@ def add_availability(request):
                 EventDateAvailability.objects.filter(
                     event_participant=participant
                 ).delete()
+            else:
+                EventWeekdayAvailability.objects.filter(
+                    event_participant=participant
+                ).delete()
 
             # Flatten the availability array to match the timeslots array format
             flattened_availability = [
