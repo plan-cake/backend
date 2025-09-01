@@ -137,7 +137,7 @@ def add_availability(request):
                 EventWeekdayAvailability.objects.bulk_create(new_availabilities)
 
     except AvailabilityInputInvalidError as e:
-        logger.warning(e + " Event code: " + event_code)
+        logger.warning(str(e) + " Event code: " + event_code)
         return Response(
             {
                 "error": {
