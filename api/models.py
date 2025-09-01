@@ -125,6 +125,12 @@ class EventWeekdayTimeslot(models.Model):
     timeslot = models.TimeField()
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "weekday", "timeslot"],
+                name="unique_weekday_timeslot_per_event",
+            )
+        ]
         indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
 
 
@@ -136,6 +142,11 @@ class EventDateTimeslot(models.Model):
     timeslot = DateTimeNoTZField()
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "timeslot"], name="unique_date_timeslot_per_event"
+            )
+        ]
         indexes = [models.Index(fields=["user_event", "timeslot"])]
 
 
@@ -153,6 +164,14 @@ class EventWeekdayAvailability(models.Model):
     )
     is_available = models.BooleanField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_participant", "event_weekday_timeslot"],
+                name="unique_participant_weekday_timeslot",
+            )
+        ]
+
 
 class EventDateAvailability(models.Model):
     event_date_availability_id = models.AutoField(primary_key=True)
@@ -167,3 +186,11 @@ class EventDateAvailability(models.Model):
         related_name="participant_availabilities",
     )
     is_available = models.BooleanField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_participant", "event_date_timeslot"],
+                name="unique_participant_date_timeslot",
+            )
+        ]
