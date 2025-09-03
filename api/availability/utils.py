@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db.models import Q
 
 from api.models import (
@@ -43,3 +45,7 @@ def check_name_available(event, user, display_name):
         display_name=display_name,
     ).first()
     return existing_participant is None
+
+
+def get_weekday_date(weekday, timeslot):
+    return datetime(2012, 1, weekday + 1, timeslot.hour, timeslot.minute)

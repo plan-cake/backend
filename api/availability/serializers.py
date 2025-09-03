@@ -31,6 +31,12 @@ class AvailabilityAddSerializer(
     time_zone = TimeZoneField(required=True)
 
 
+class AvailableDatesSerializer(serializers.Serializer):
+    available_dates = serializers.ListField(
+        child=serializers.DateTimeField(required=True), required=True
+    )
+
+
 class EventAvailabilitySerializer(serializers.Serializer):
     participants = serializers.ListField(
         child=serializers.CharField(required=True, max_length=25),

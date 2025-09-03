@@ -6,7 +6,7 @@ from rest_framework.throttling import AnonRateThrottle
 
 from api.availability.serializers import (
     AvailabilityAddSerializer,
-    AvailabilitySerializer,
+    AvailableDatesSerializer,
     DisplayNameCheckSerializer,
     EventAvailabilitySerializer,
     EventCodeSerializer,
@@ -15,6 +15,7 @@ from api.availability.utils import (
     EventGridDimensionError,
     check_name_available,
     get_event_grid,
+    get_weekday_date,
 )
 from api.models import (
     EventDateAvailability,
@@ -219,10 +220,13 @@ def check_display_name(request):
 @api_endpoint("GET")
 @require_auth
 @validate_query_param_input(EventCodeSerializer)
-@validate_output(AvailabilitySerializer)
+@validate_output(AvailableDatesSerializer)
 def get_self_availability(request):
     """
-    Gets the grid of availability submitted by the current user.
+    Gets the availability submitted by the current user, in the form of a list of dates
+    that the user is available.
+
+    For 'week' events, the dates will be on the days of the week they represent.
 
     An error will be returned if the user has not participated in the specified event.
     """
@@ -235,45 +239,34 @@ def get_self_availability(request):
 
         if event.date_type == UserEvent.EventType.SPECIFIC:
             availabilities = (
-                EventDateAvailability.objects.filter(event_participant=participant)
+                EventDateAvailability.objects.filter(
+                    event_participant=participant, is_available=True
+                )
                 .select_related("event_date_timeslot")
                 .order_by("event_date_timeslot__timeslot")
             )
-            data = []
-            current_day = [availabilities[0].is_available]
-            last_date = availabilities[0].event_date_timeslot.timeslot.date()
-            for timeslot in availabilities[1:]:
-                timeslot_date = timeslot.event_date_timeslot.timeslot.date()
-                if timeslot_date != last_date:
-                    data.append(current_day)
-                    current_day = []
-                    last_date = timeslot_date
-                current_day.append(timeslot.is_available)
-            data.append(current_day)
-
-            return Response({"availability": data}, status=200)
+            data = [a.event_date_timeslot.timeslot for a in availabilities]
         else:
             availabilities = (
-                EventWeekdayAvailability.objects.filter(event_participant=participant)
+                EventWeekdayAvailability.objects.filter(
+                    event_participant=participant, is_available=True
+                )
                 .select_related("event_weekday_timeslot")
                 .order_by(
                     "event_weekday_timeslot__weekday",
                     "event_weekday_timeslot__timeslot",
                 )
             )
-            data = []
-            current_day = [availabilities[0].is_available]
-            last_weekday = availabilities[0].event_weekday_timeslot.weekday
-            for timeslot in availabilities[1:]:
-                timeslot_weekday = timeslot.event_weekday_timeslot.weekday
-                if timeslot_weekday != last_weekday:
-                    data.append(current_day)
-                    current_day = []
-                    last_weekday = timeslot_weekday
-                current_day.append(timeslot.is_available)
-            data.append(current_day)
+            print(availabilities[0].event_weekday_timeslot.timeslot)
+            print(type(availabilities[0].event_weekday_timeslot.timeslot))
+            data = [
+                get_weekday_date(
+                    a.event_weekday_timeslot.weekday, a.event_weekday_timeslot.timeslot
+                )
+                for a in availabilities
+            ]
 
-            return Response({"availability": data}, status=200)
+        return Response({"available_dates": data}, status=200)
 
     except UserEvent.DoesNotExist:
         return Response(
