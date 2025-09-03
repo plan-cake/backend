@@ -24,7 +24,14 @@ from api.event.utils import (
     validate_date_input,
     validate_weekday_input,
 )
-from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
+from api.models import (
+    EventDateAvailability,
+    EventDateTimeslot,
+    EventWeekdayAvailability,
+    EventWeekdayTimeslot,
+    UrlCode,
+    UserEvent,
+)
 from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
 from api.utils import (
     MessageOutputSerializer,
@@ -93,7 +100,7 @@ def create_date_event(request):
             new_event = UserEvent.objects.create(
                 user_account=user,
                 title=title,
-                date_type="SPECIFIC",
+                date_type=UserEvent.EventType.SPECIFIC,
                 duration=duration,
                 time_zone=time_zone,
             )
@@ -173,7 +180,7 @@ def create_week_event(request):
             new_event = UserEvent.objects.create(
                 user_account=user,
                 title=title,
-                date_type="GENERIC",
+                date_type=UserEvent.EventType.GENERIC,
                 duration=duration,
                 time_zone=time_zone,
             )
@@ -248,7 +255,9 @@ def edit_date_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code, user_account=user, date_type="SPECIFIC"
+                url_codes=event_code,
+                user_account=user,
+                date_type=UserEvent.EventType.SPECIFIC,
             )
             # Get the earliest timeslot
             existing_start_date = (
@@ -287,13 +296,27 @@ def edit_date_event(request):
                 for time in timerange(start_hour, end_hour)
             )
             to_delete = existing_timeslots - edited_timeslots
-            to_add = edited_timeslots - existing_timeslots
+            to_add = [
+                EventDateTimeslot(user_event=event, timeslot=ts)
+                for ts in edited_timeslots - existing_timeslots
+            ]
             EventDateTimeslot.objects.filter(
                 user_event=event, timeslot__in=to_delete
             ).delete()
-            EventDateTimeslot.objects.bulk_create(
-                [EventDateTimeslot(user_event=event, timeslot=ts) for ts in to_add]
-            )
+            EventDateTimeslot.objects.bulk_create(to_add)
+
+            # Add in "unavailable" entries for the new timeslots for current participants
+            to_add_availabilities = []
+            for participant in event.participants.all():
+                for ts in to_add:
+                    to_add_availabilities.append(
+                        EventDateAvailability(
+                            event_participant=participant,
+                            event_date_timeslot=ts,
+                            is_available=False,
+                        )
+                    )
+            EventDateAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
         return Response({"error": {"general": ["Event not found."]}}, status=404)
@@ -333,7 +356,9 @@ def edit_week_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code, user_account=user, date_type="GENERIC"
+                url_codes=event_code,
+                user_account=user,
+                date_type=UserEvent.EventType.GENERIC,
             )
 
             errors = validate_weekday_input(
@@ -360,7 +385,10 @@ def edit_week_event(request):
                 for time in timerange(start_hour, end_hour)
             )
             to_delete = existing_timeslots - edited_timeslots
-            to_add = edited_timeslots - existing_timeslots
+            to_add = [
+                EventWeekdayTimeslot(user_event=event, weekday=wd, timeslot=ts)
+                for (wd, ts) in edited_timeslots - existing_timeslots
+            ]
 
             if to_delete:
                 # Make sure the query matches each unique weekday, timeslot pair
@@ -369,12 +397,20 @@ def edit_week_event(request):
                     query |= Q(user_event=event, weekday=wd, timeslot=ts)
                 EventWeekdayTimeslot.objects.filter(query).delete()
 
-            EventWeekdayTimeslot.objects.bulk_create(
-                [
-                    EventWeekdayTimeslot(user_event=event, weekday=wd, timeslot=ts)
-                    for (wd, ts) in to_add
-                ]
-            )
+            EventWeekdayTimeslot.objects.bulk_create(to_add)
+
+            # Add in "unavailable" entries for the new timeslots for current participants
+            to_add_availabilities = []
+            for participant in event.participants.all():
+                for ts in to_add:
+                    to_add_availabilities.append(
+                        EventWeekdayAvailability(
+                            event_participant=participant,
+                            event_weekday_timeslot=ts,
+                            is_available=False,
+                        )
+                    )
+            EventWeekdayAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
         return Response({"error": {"general": ["Event not found."]}}, status=404)
@@ -413,7 +449,7 @@ def get_event_details(request):
     try:
         timeslots = None
         event = UserEvent.objects.get(url_codes=event_code)
-        if event.date_type == "SPECIFIC":
+        if event.date_type == UserEvent.EventType.SPECIFIC:
             event_type = "Date"
             timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
                 "timeslot"

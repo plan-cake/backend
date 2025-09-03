@@ -5,10 +5,17 @@ from datetime import datetime, timedelta
 import bcrypt
 from django.core.mail import send_mail
 from django.db import DatabaseError, transaction
-from rest_framework import serializers
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from api.auth.serializers import (
+    EmailSerializer,
+    EmailVerifySerializer,
+    LoginSerializer,
+    PasswordResetSerializer,
+    PasswordSerializer,
+    RegisterAccountSerializer,
+)
 from api.auth.utils import validate_password
 from api.models import (
     PasswordResetToken,
@@ -37,11 +44,6 @@ from api.utils import (
 )
 
 logger = logging.getLogger("api")
-
-
-class RegisterAccountSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-    password = serializers.CharField(required=True)
 
 
 class RegisterAccountThrottle(AnonRateThrottle):
@@ -121,10 +123,6 @@ def register(request):
         return GENERIC_ERR_RESPONSE
 
 
-class EmailSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-
-
 class ResendEmailThrottle(AnonRateThrottle):
     scope = "resend_email"
 
@@ -180,10 +178,6 @@ def resend_register_email(request):
     return Response({"message": ["Verification email resent."]}, status=200)
 
 
-class EmailVerifySerializer(serializers.Serializer):
-    verification_code = serializers.CharField(required=True)
-
-
 @api_endpoint("POST")
 @validate_json_input(EmailVerifySerializer)
 @validate_output(MessageOutputSerializer)
@@ -228,12 +222,6 @@ def verify_email(request):
         return GENERIC_ERR_RESPONSE
 
     return Response({"message": ["Email verified successfully."]}, status=200)
-
-
-class LoginSerializer(serializers.Serializer):
-    email = serializers.EmailField(required=True)
-    password = serializers.CharField(required=True)
-    remember_me = serializers.BooleanField(default=False, required=False)
 
 
 class LoginThrottle(AnonRateThrottle):
@@ -301,10 +289,6 @@ def login(request):
         max_age=LONG_SESS_EXP_SECONDS if remember_me else SESS_EXP_SECONDS,
     )
     return response
-
-
-class PasswordSerializer(serializers.Serializer):
-    password = serializers.CharField(required=True)
 
 
 @api_endpoint("POST")
@@ -396,11 +380,6 @@ def start_password_reset(request):
         },
         status=200,
     )
-
-
-class PasswordResetSerializer(serializers.Serializer):
-    reset_token = serializers.CharField(required=True)
-    new_password = serializers.CharField(required=True)
 
 
 @api_endpoint("POST")

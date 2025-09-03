@@ -46,6 +46,36 @@ def get_readable_field_name(field_name):
             return "object"
 
 
+def get_field_info(field, include_required):
+    data = {}
+    if field.__class__.__name__ == "ListField":
+        child = field.child
+        data = {
+            "type": "array",
+            "items": get_field_info(child, include_required),
+        }
+        if include_required:
+            data["required"] = field.required
+    elif (
+        get_readable_field_name(field.__class__.__name__) == "object"
+        and field.__class__.__name__ != "JSONField"
+    ):
+        data = {
+            "type": "object",
+            "properties": get_serializer_format(
+                field.__class__, include_required=include_required
+            ),
+        }
+    else:
+        field_type = get_readable_field_name(field.__class__.__name__)
+        data = {
+            "type": field_type,
+        }
+        if include_required:
+            data["required"] = field.required
+    return data
+
+
 def get_serializer_format(serializer_class, include_required=True):
     """
     Returns the format of the serializer class in a JSON format.
@@ -55,26 +85,5 @@ def get_serializer_format(serializer_class, include_required=True):
 
     fields = {}
     for field_name, field in serializer_class().fields.items():
-        if field.__class__.__name__ == "ListField":
-            child = field.child.__class__.__name__
-            child_type = get_readable_field_name(child)
-            fields[field_name] = {
-                "type": "array",
-                "items": {
-                    "type": child_type,
-                },
-            }
-            if child_type == "object" and child != "JSONField":
-                fields[field_name]["items"]["properties"] = get_serializer_format(
-                    field.child.__class__, include_required=include_required
-                )
-            if include_required:
-                fields[field_name]["required"] = field.required
-        else:
-            field_type = get_readable_field_name(field.__class__.__name__)
-            fields[field_name] = {
-                "type": field_type,
-            }
-            if include_required:
-                fields[field_name]["required"] = field.required
+        fields[field_name] = get_field_info(field, include_required)
     return fields

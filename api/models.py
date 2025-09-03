@@ -101,8 +101,19 @@ class EventParticipant(models.Model):
     user_account = models.ForeignKey(
         UserAccount, on_delete=models.CASCADE, related_name="events_participated"
     )
-    display_name = models.CharField(max_length=25, null=True)
-    time_zone = models.CharField(max_length=64, null=True)
+    display_name = models.CharField(max_length=25)
+    time_zone = models.CharField(max_length=64)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "user_account"], name="unique_event_participant"
+            ),
+            models.UniqueConstraint(
+                fields=["user_event", "display_name"],
+                name="unique_display_name_per_event",
+            ),
+        ]
 
 
 class EventWeekdayTimeslot(models.Model):
@@ -114,6 +125,12 @@ class EventWeekdayTimeslot(models.Model):
     timeslot = models.TimeField()
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "weekday", "timeslot"],
+                name="unique_weekday_timeslot_per_event",
+            )
+        ]
         indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
 
 
@@ -125,6 +142,11 @@ class EventDateTimeslot(models.Model):
     timeslot = DateTimeNoTZField()
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user_event", "timeslot"], name="unique_date_timeslot_per_event"
+            )
+        ]
         indexes = [models.Index(fields=["user_event", "timeslot"])]
 
 
@@ -142,6 +164,15 @@ class EventWeekdayAvailability(models.Model):
     )
     is_available = models.BooleanField()
 
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_participant", "event_weekday_timeslot"],
+                name="unique_participant_weekday_timeslot",
+            )
+        ]
+        indexes = [models.Index(fields=["event_participant"])]
+
 
 class EventDateAvailability(models.Model):
     event_date_availability_id = models.AutoField(primary_key=True)
@@ -156,3 +187,12 @@ class EventDateAvailability(models.Model):
         related_name="participant_availabilities",
     )
     is_available = models.BooleanField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_participant", "event_date_timeslot"],
+                name="unique_participant_date_timeslot",
+            )
+        ]
+        indexes = [models.Index(fields=["event_participant"])]
