@@ -26,6 +26,8 @@ DEBUG = env.bool("DEBUG", default=False)
 
 ALLOWED_HOSTS = []
 
+BASE_URL = env("BASE_URL")
+
 
 # Application definition
 
@@ -39,7 +41,12 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = True if DEBUG else False
+
+CORS_ALLOWED_ORIGINS = [BASE_URL]
 
 ROOT_URLCONF = "api.urls"
 
@@ -106,8 +113,6 @@ DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL")
 ADMIN_EMAILS = env.list("ADMIN_EMAILS", default=[])
 SEND_EMAILS = env.bool("SEND_EMAILS", default=False)
 CRITICAL_EMAIL_INTERVAL_SECONDS = 1800  # 30 minutes
-
-BASE_URL = env("BASE_URL")
 
 # Automated tasks
 CELERY_BEAT_SCHEDULE = {
