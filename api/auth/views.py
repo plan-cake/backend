@@ -36,9 +36,9 @@ from api.settings import (
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    get_session,
     rate_limit,
     require_account_auth,
-    require_auth,
     validate_json_input,
     validate_output,
 )
@@ -230,7 +230,6 @@ class LoginThrottle(AnonRateThrottle):
 
 @api_endpoint("POST")
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
-@require_auth  # Just to check if the user is already logged in to a user account
 @validate_json_input(LoginSerializer)
 @validate_output(MessageOutputSerializer)
 def login(request):
@@ -244,12 +243,41 @@ def login(request):
     password = request.validated_data.get("password")
     remember_me = request.validated_data.get("remember_me")
 
-    is_logged_in = request.user.is_guest is False
-    if is_logged_in:
-        logger.info("User %s is already logged in.", request.user.email)
-        return Response(
-            {"error": {"general": ["You are already logged in."]}}, status=400
-        )
+    # Check if the user is already logged in
+    acct_token = request.COOKIES.get("account_sess_token")
+    if acct_token:
+        try:
+            with transaction.atomic():
+                session = get_session(acct_token)
+                if not session:
+                    raise UserSession.DoesNotExist
+                session.save()  # To update last_used to now
+
+            # At this point the account is authenticated
+            logger.info("User %s is already logged in.", session.user_account.email)
+            response = Response(
+                {"error": {"general": ["You are already logged in."]}}, status=400
+            )
+            # Refresh the session token cookie
+            response.set_cookie(
+                key="account_sess_token",
+                value=acct_token,
+                httponly=True,
+                secure=True,
+                samesite="Lax",
+                max_age=(
+                    LONG_SESS_EXP_SECONDS if session.is_extended else SESS_EXP_SECONDS
+                ),
+            )
+            return response
+        except UserSession.DoesNotExist:
+            logger.info("Account session expired.")
+        except DatabaseError as e:
+            logger.db_error(e)
+            return GENERIC_ERR_RESPONSE
+        except Exception as e:
+            logger.error(e)
+            return GENERIC_ERR_RESPONSE
 
     BAD_AUTH_RESPONSE = Response(
         {"error": {"general": ["Email or password is incorrect."]}}, status=400
