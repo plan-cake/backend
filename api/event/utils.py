@@ -31,7 +31,16 @@ def check_custom_code(code):
     if not re.fullmatch(r"[A-Za-z0-9\-]+", code):
         return "Code must contain only alphanumeric characters and dashes."
 
-    RESERVED_KEYWORDS = []  # TODO: Add this later after consulting with frontend
+    RESERVED_KEYWORDS = [
+        "api",
+        "dashboard",
+        "forgot-password",
+        "login",
+        "new-event",
+        "reset-password",
+        "sign-up",
+        "verify-email",
+    ]
     if code in RESERVED_KEYWORDS or not check_code_available(code):
         return "Code unavailable."
 
