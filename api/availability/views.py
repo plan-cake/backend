@@ -287,6 +287,7 @@ def get_self_availability(request):
 
 
 @api_endpoint("GET")
+@require_auth
 @validate_query_param_input(EventCodeSerializer)
 @validate_output(EventAvailabilitySerializer)
 def get_all_availability(request):
@@ -296,10 +297,12 @@ def get_all_availability(request):
     The response format is a 3D array. The outermost layer is days, while the middle is
     timeslots and the innermost is the display names of available users for that timeslot.
     """
+    user = request.user
     event_code = request.validated_data.get("event_code")
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
+        is_creator = event.user_account == user
         participants = event.participants.all()
 
         if not len(participants):
@@ -307,6 +310,7 @@ def get_all_availability(request):
 
             return Response(
                 {
+                    "is_creator": is_creator,
                     "participants": [],
                     "availability": [
                         [[] for _ in range(num_times)] for _ in range(num_days)
@@ -346,6 +350,7 @@ def get_all_availability(request):
 
             return Response(
                 {
+                    "is_creator": is_creator,
                     "participants": [p.display_name for p in participants],
                     "availability": data,
                 },
@@ -389,6 +394,7 @@ def get_all_availability(request):
 
             return Response(
                 {
+                    "is_creator": is_creator,
                     "participants": [p.display_name for p in participants],
                     "availability": data,
                 },

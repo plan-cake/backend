@@ -38,6 +38,7 @@ class AvailableDatesSerializer(serializers.Serializer):
 
 
 class EventAvailabilitySerializer(serializers.Serializer):
+    is_creator = serializers.BooleanField(required=True)
     participants = serializers.ListField(
         child=serializers.CharField(required=True, max_length=25),
         required=True,
