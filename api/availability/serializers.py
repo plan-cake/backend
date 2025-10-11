@@ -43,15 +43,11 @@ class EventAvailabilitySerializer(serializers.Serializer):
         child=serializers.CharField(required=True, max_length=25),
         required=True,
     )
-    availability = serializers.ListField(
+    availability = serializers.DictField(
         child=serializers.ListField(
-            child=serializers.ListField(
-                child=serializers.CharField(required=True, max_length=25),
-                required=True,
-            ),
+            child=serializers.CharField(required=True, max_length=25),
             required=True,
-            min_length=4,
         ),
         required=True,
-        min_length=1,
+        allow_empty=False,
     )

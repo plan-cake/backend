@@ -294,8 +294,10 @@ def get_all_availability(request):
     """
     Gets the availability submitted by all event participants.
 
-    The response format is a 3D array. The outermost layer is days, while the middle is
-    timeslots and the innermost is the display names of available users for that timeslot.
+    The response format is a dictionary of arrays. The keys are timeslots (in ISO format)
+    and the values are arrays of the display names of available users for that timeslot.
+
+    The "is_creator" field indicates whether the current user is the creator of the event.
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
@@ -305,16 +307,24 @@ def get_all_availability(request):
         is_creator = event.user_account == user
         participants = event.participants.all()
 
-        if not len(participants):
-            _, num_days, num_times = get_event_grid(event)
+        # Create the
+        availability_dict = {}
+        timeslots, _, _ = get_event_grid(event)
+        if event.date_type == UserEvent.EventType.SPECIFIC:
+            for slot in timeslots:
+                availability_dict[slot.timeslot.isoformat()] = []
+        else:
+            for slot in timeslots:
+                availability_dict[
+                    get_weekday_date(slot.weekday, slot.timeslot).isoformat()
+                ] = []
 
+        if not len(participants):
             return Response(
                 {
                     "is_creator": is_creator,
                     "participants": [],
-                    "availability": [
-                        [[] for _ in range(num_times)] for _ in range(num_days)
-                    ],
+                    "availability": availability_dict,
                 },
                 status=200,
             )
@@ -327,32 +337,20 @@ def get_all_availability(request):
                     "event_date_timeslot__timeslot", "event_participant__display_name"
                 )
             )
-            timeslot_dict = {}
             for t in availabilities:
-                timeslot = t.event_date_timeslot.timeslot
-                if timeslot not in timeslot_dict:
-                    timeslot_dict[timeslot] = []
+                timeslot = t.event_date_timeslot.timeslot.isoformat()
+                if timeslot not in availability_dict:
+                    logger.error(
+                        f"Timeslot {timeslot} not found in availability dict for event {event_code}"
+                    )
                 if t.is_available:
-                    timeslot_dict[timeslot].append(t.event_participant.display_name)
-
-            timeslots = sorted(timeslot_dict.keys())
-            data = []
-            current_day = [timeslot_dict[timeslots[0]]]
-            last_date = timeslots[0].date()
-            for timeslot in timeslots[1:]:
-                timeslot_date = timeslot.date()
-                if timeslot_date != last_date:
-                    data.append(current_day)
-                    current_day = []
-                    last_date = timeslot_date
-                current_day.append(timeslot_dict[timeslot])
-            data.append(current_day)
+                    availability_dict[timeslot].append(t.event_participant.display_name)
 
             return Response(
                 {
                     "is_creator": is_creator,
                     "participants": [p.display_name for p in participants],
-                    "availability": data,
+                    "availability": availability_dict,
                 },
                 status=200,
             )
@@ -368,35 +366,23 @@ def get_all_availability(request):
                     "event_participant__display_name",
                 )
             )
-            timeslot_dict = {}
             for t in availabilities:
-                timeslot = (
+                timeslot = get_weekday_date(
                     t.event_weekday_timeslot.weekday,
                     t.event_weekday_timeslot.timeslot,
-                )
-                if timeslot not in timeslot_dict:
-                    timeslot_dict[timeslot] = []
+                ).isoformat()
+                if timeslot not in availability_dict:
+                    logger.error(
+                        f"Timeslot {timeslot} not found in availability dict for event {event_code}"
+                    )
                 if t.is_available:
-                    timeslot_dict[timeslot].append(t.event_participant.display_name)
-
-            timeslots = sorted(timeslot_dict.keys())
-            data = []
-            current_day = [timeslot_dict[timeslots[0]]]
-            last_weekday = timeslots[0][0]
-            for timeslot in timeslots[1:]:
-                timeslot_weekday = timeslot[0]
-                if timeslot_weekday != last_weekday:
-                    data.append(current_day)
-                    current_day = []
-                    last_weekday = timeslot_weekday
-                current_day.append(timeslot_dict[timeslot])
-            data.append(current_day)
+                    availability_dict[timeslot].append(t.event_participant.display_name)
 
             return Response(
                 {
                     "is_creator": is_creator,
                     "participants": [p.display_name for p in participants],
-                    "availability": data,
+                    "availability": availability_dict,
                 },
                 status=200,
             )
