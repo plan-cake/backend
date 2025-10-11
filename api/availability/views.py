@@ -343,6 +343,7 @@ def get_all_availability(request):
                     logger.error(
                         f"Timeslot {timeslot} not found in availability dict for event {event_code}"
                     )
+                    continue
                 if t.is_available:
                     availability_dict[timeslot].append(t.event_participant.display_name)
 
@@ -375,6 +376,7 @@ def get_all_availability(request):
                     logger.error(
                         f"Timeslot {timeslot} not found in availability dict for event {event_code}"
                     )
+                    continue
                 if t.is_available:
                     availability_dict[timeslot].append(t.event_participant.display_name)
 
