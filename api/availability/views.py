@@ -307,7 +307,7 @@ def get_all_availability(request):
         is_creator = event.user_account == user
         participants = event.participants.all()
 
-        # Create the
+        # Prep the dictionary with empty arrays for the return value
         availability_dict = {}
         timeslots, _, _ = get_event_grid(event)
         if event.date_type == UserEvent.EventType.SPECIFIC:
