@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from api.dashboard.utils import format_event
 from api.models import EventParticipant, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE
-from api.utils import api_endpoint, require_auth, validate_output
+from api.utils import api_endpoint, check_auth, validate_output
 
 logger = logging.getLogger("api")
 
@@ -28,7 +28,7 @@ class DashboardSerializer(serializers.Serializer):
 
 
 @api_endpoint("GET")
-@require_auth
+@check_auth
 @validate_output(DashboardSerializer)
 def get_dashboard(request):
     """
@@ -40,6 +40,14 @@ def get_dashboard(request):
     Events that no longer have a URL code from inactivity will not be included.
     """
     user = request.user
+
+    if not user:
+        return Response(
+            {
+                "created_events": [],
+                "participated_events": [],
+            }
+        )
 
     try:
         created_events = UserEvent.objects.filter(
