@@ -95,6 +95,22 @@ def get_session(token):
     )
 
 
+def set_session_cookie(response, key, value, is_extended):
+    """
+    Given a response, sets a session cookie with appropriate parameters.
+
+    Mostly just to avoid repeating this 8-line block of code.
+    """
+    response.set_cookie(
+        key=key,
+        value=value,
+        httponly=True,
+        secure=True,
+        samesite="Lax",
+        max_age=LONG_SESS_EXP_SECONDS if is_extended else SESS_EXP_SECONDS,
+    )
+
+
 def check_auth(func):
     """
     A decorator to check if the user is authenticated based on their cookies.
@@ -126,17 +142,8 @@ def check_auth(func):
 
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
-                response.set_cookie(
-                    key="account_sess_token",
-                    value=acct_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=(
-                        LONG_SESS_EXP_SECONDS
-                        if session.is_extended
-                        else SESS_EXP_SECONDS
-                    ),
+                set_session_cookie(
+                    response, "account_sess_token", acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:
@@ -165,14 +172,7 @@ def check_auth(func):
                 request.user = session.user_account
                 # Run the function
                 response = func(request, *args, **kwargs)
-                response.set_cookie(
-                    key="guest_sess_token",
-                    value=guest_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=LONG_SESS_EXP_SECONDS,
-                )
+                set_session_cookie(response, "guest_sess_token", guest_token, True)
             except UserSession.DoesNotExist:
                 logger.info("Guest session expired.")
                 # Do NOT create a new guest account
@@ -237,17 +237,8 @@ def require_auth(func):
 
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
-                response.set_cookie(
-                    key="account_sess_token",
-                    value=acct_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=(
-                        LONG_SESS_EXP_SECONDS
-                        if session.is_extended
-                        else SESS_EXP_SECONDS
-                    ),
+                set_session_cookie(
+                    response, "account_sess_token", acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:
@@ -276,14 +267,7 @@ def require_auth(func):
                 request.user = session.user_account
                 # Run the function
                 response = func(request, *args, **kwargs)
-                response.set_cookie(
-                    key="guest_sess_token",
-                    value=guest_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=LONG_SESS_EXP_SECONDS,
-                )
+                set_session_cookie(response, "guest_sess_token", guest_token, True)
             except UserSession.DoesNotExist:
                 logger.info("Guest session expired. Creating a new guest account...")
                 # Check guest creation rate limit
@@ -319,13 +303,11 @@ def require_auth(func):
                     request.user = guest_account
                     # Run the function
                     response = func(request, *args, **kwargs)
-                    response.set_cookie(
-                        key="guest_sess_token",
-                        value=guest_session.session_token,
-                        httponly=True,
-                        secure=True,
-                        samesite="Lax",
-                        max_age=LONG_SESS_EXP_SECONDS,
+                    set_session_cookie(
+                        response,
+                        "guest_sess_token",
+                        guest_session.session_token,
+                        True,
                     )
                 except DatabaseError as e:
                     logger.db_error(e)
@@ -368,13 +350,11 @@ def require_auth(func):
                 request.user = guest_account
                 # Run the function
                 response = func(request, *args, **kwargs)
-                response.set_cookie(
-                    key="guest_sess_token",
-                    value=guest_session.session_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=LONG_SESS_EXP_SECONDS,
+                set_session_cookie(
+                    response,
+                    "guest_sess_token",
+                    guest_session.session_token,
+                    True,
                 )
             except DatabaseError as e:
                 logger.db_error(e)
@@ -431,17 +411,8 @@ def require_account_auth(func):
 
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
-                response.set_cookie(
-                    key="account_sess_token",
-                    value=acct_token,
-                    httponly=True,
-                    secure=True,
-                    samesite="Lax",
-                    max_age=(
-                        LONG_SESS_EXP_SECONDS
-                        if session.is_extended
-                        else SESS_EXP_SECONDS
-                    ),
+                set_session_cookie(
+                    response, "account_sess_token", acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:
