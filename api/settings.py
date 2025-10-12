@@ -79,13 +79,13 @@ USE_TZ = False
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        "user_account_creation": "4/hour",
+        "user_account_creation": "3/hour",
         "resend_email": "3/hour",
-        "guest_account_creation": "2/hour",
-        "login": "10/hour",
+        "guest_account_creation": "1/min",
+        "login": "6/hour",
         "password_reset": "3/hour",
         "event_creation": "6/hour",
-        "availability_add": "6/hour",
+        "availability_add": "12/hour",
     },
 }
 
