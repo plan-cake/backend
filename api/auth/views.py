@@ -40,6 +40,7 @@ from api.utils import (
     get_session,
     rate_limit,
     require_account_auth,
+    set_session_cookie,
     validate_json_input,
     validate_output,
 )
@@ -260,15 +261,8 @@ def login(request):
                 {"error": {"general": ["You are already logged in."]}}, status=400
             )
             # Refresh the session token cookie
-            response.set_cookie(
-                key=ACCOUNT_COOKIE_NAME,
-                value=acct_token,
-                httponly=True,
-                secure=True,
-                samesite="Lax",
-                max_age=(
-                    LONG_SESS_EXP_SECONDS if session.is_extended else SESS_EXP_SECONDS
-                ),
+            set_session_cookie(
+                response, ACCOUNT_COOKIE_NAME, acct_token, session.is_extended
             )
             return response
         except UserSession.DoesNotExist:
@@ -309,14 +303,7 @@ def login(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Login successful."]}, status=200)
-    response.set_cookie(
-        key=ACCOUNT_COOKIE_NAME,
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        max_age=LONG_SESS_EXP_SECONDS if remember_me else SESS_EXP_SECONDS,
-    )
+    set_session_cookie(response, ACCOUNT_COOKIE_NAME, session_token, remember_me)
     return response
 
 
