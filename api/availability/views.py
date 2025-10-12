@@ -411,7 +411,7 @@ def get_all_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(EventCodeSerializer)
 @validate_output(MessageOutputSerializer)
 def remove_self_availability(request):
@@ -422,6 +422,12 @@ def remove_self_availability(request):
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
+
+    if not user:
+        return Response(
+            {"error": {"general": ["User has not participated in this event."]}},
+            status=400,
+        )
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
