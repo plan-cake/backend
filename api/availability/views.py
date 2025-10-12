@@ -218,6 +218,12 @@ def check_display_name(request):
         return GENERIC_ERR_RESPONSE
 
 
+NOT_PARTICIPATED_ERROR = Response(
+    {"error": {"general": ["User has not participated in this event."]}},
+    status=400,
+)
+
+
 @api_endpoint("GET")
 @check_auth
 @validate_query_param_input(EventCodeSerializer)
@@ -236,10 +242,7 @@ def get_self_availability(request):
 
     # We can be ambiguous to avoid creating more guest accounts
     if not user:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -282,10 +285,7 @@ def get_self_availability(request):
             status=404,
         )
     except EventParticipant.DoesNotExist:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -424,10 +424,7 @@ def remove_self_availability(request):
     event_code = request.validated_data.get("event_code")
 
     if not user:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -440,10 +437,7 @@ def remove_self_availability(request):
             status=404,
         )
     except EventParticipant.DoesNotExist:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
