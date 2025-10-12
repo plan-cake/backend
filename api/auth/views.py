@@ -25,6 +25,7 @@ from api.models import (
     UserSession,
 )
 from api.settings import (
+    ACCOUNT_COOKIE_NAME,
     BASE_URL,
     EMAIL_CODE_EXP_SECONDS,
     GENERIC_ERR_RESPONSE,
@@ -244,7 +245,7 @@ def login(request):
     remember_me = request.validated_data.get("remember_me")
 
     # Check if the user is already logged in
-    acct_token = request.COOKIES.get("account_sess_token")
+    acct_token = request.COOKIES.get(ACCOUNT_COOKIE_NAME)
     if acct_token:
         try:
             with transaction.atomic():
@@ -260,7 +261,7 @@ def login(request):
             )
             # Refresh the session token cookie
             response.set_cookie(
-                key="account_sess_token",
+                key=ACCOUNT_COOKIE_NAME,
                 value=acct_token,
                 httponly=True,
                 secure=True,
@@ -309,7 +310,7 @@ def login(request):
 
     response = Response({"message": ["Login successful."]}, status=200)
     response.set_cookie(
-        key="account_sess_token",
+        key=ACCOUNT_COOKIE_NAME,
         value=session_token,
         httponly=True,
         secure=True,
@@ -482,7 +483,7 @@ def logout(request):
     database and the cookie on the client.
     """
     try:
-        if token := request.COOKIES.get("account_sess_token"):
+        if token := request.COOKIES.get(ACCOUNT_COOKIE_NAME):
             UserSession.objects.filter(session_token=token).delete()
         else:
             logger.info("User already logged out.")
@@ -494,7 +495,7 @@ def logout(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Logged out successfully."]}, status=200)
-    response.delete_cookie("account_sess_token")
+    response.delete_cookie(ACCOUNT_COOKIE_NAME)
     return response
 
 
@@ -522,5 +523,5 @@ def delete_account(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Account deleted successfully."]}, status=200)
-    response.delete_cookie("account_sess_token")
+    response.delete_cookie(ACCOUNT_COOKIE_NAME)
     return response

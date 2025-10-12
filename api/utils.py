@@ -14,7 +14,9 @@ from rest_framework.throttling import AnonRateThrottle
 
 from api.models import UserAccount, UserSession
 from api.settings import (
+    ACCOUNT_COOKIE_NAME,
     GENERIC_ERR_RESPONSE,
+    GUEST_COOKIE_NAME,
     LONG_SESS_EXP_SECONDS,
     REST_FRAMEWORK,
     SESS_EXP_SECONDS,
@@ -125,7 +127,7 @@ def check_auth(func):
 
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
-        acct_token = request.COOKIES.get("account_sess_token")
+        acct_token = request.COOKIES.get(ACCOUNT_COOKIE_NAME)
         acct_sess_expired = False
         if acct_token:
             logger.debug("Account session token: %s", acct_token)
@@ -143,7 +145,7 @@ def check_auth(func):
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
                 set_session_cookie(
-                    response, "account_sess_token", acct_token, session.is_extended
+                    response, ACCOUNT_COOKIE_NAME, acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:
@@ -157,7 +159,7 @@ def check_auth(func):
                 return GENERIC_ERR_RESPONSE
 
         # At this point the account session either expired or did not exist
-        guest_token = request.COOKIES.get("guest_sess_token")
+        guest_token = request.COOKIES.get(GUEST_COOKIE_NAME)
 
         if guest_token:
             logger.debug("Guest session token: %s", guest_token)
@@ -172,7 +174,7 @@ def check_auth(func):
                 request.user = session.user_account
                 # Run the function
                 response = func(request, *args, **kwargs)
-                set_session_cookie(response, "guest_sess_token", guest_token, True)
+                set_session_cookie(response, GUEST_COOKIE_NAME, guest_token, True)
             except UserSession.DoesNotExist:
                 logger.info("Guest session expired.")
                 # Do NOT create a new guest account
@@ -195,7 +197,7 @@ def check_auth(func):
                 response.data["message"].append(SESS_EXP_MSG)
             else:
                 response.data["message"] = [SESS_EXP_MSG]
-            response.delete_cookie("account_sess_token")
+            response.delete_cookie(ACCOUNT_COOKIE_NAME)
         return response
 
     return wrapper
@@ -220,7 +222,7 @@ def require_auth(func):
 
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
-        acct_token = request.COOKIES.get("account_sess_token")
+        acct_token = request.COOKIES.get(ACCOUNT_COOKIE_NAME)
         acct_sess_expired = False
         if acct_token:
             logger.debug("Account session token: %s", acct_token)
@@ -238,7 +240,7 @@ def require_auth(func):
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
                 set_session_cookie(
-                    response, "account_sess_token", acct_token, session.is_extended
+                    response, ACCOUNT_COOKIE_NAME, acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:
@@ -252,7 +254,7 @@ def require_auth(func):
                 return GENERIC_ERR_RESPONSE
 
         # At this point the account session either expired or did not exist
-        guest_token = request.COOKIES.get("guest_sess_token")
+        guest_token = request.COOKIES.get(GUEST_COOKIE_NAME)
 
         if guest_token:
             logger.debug("Guest session token: %s", guest_token)
@@ -267,7 +269,7 @@ def require_auth(func):
                 request.user = session.user_account
                 # Run the function
                 response = func(request, *args, **kwargs)
-                set_session_cookie(response, "guest_sess_token", guest_token, True)
+                set_session_cookie(response, GUEST_COOKIE_NAME, guest_token, True)
             except UserSession.DoesNotExist:
                 logger.info("Guest session expired. Creating a new guest account...")
                 # Check guest creation rate limit
@@ -305,7 +307,7 @@ def require_auth(func):
                     response = func(request, *args, **kwargs)
                     set_session_cookie(
                         response,
-                        "guest_sess_token",
+                        GUEST_COOKIE_NAME,
                         guest_session.session_token,
                         True,
                     )
@@ -352,7 +354,7 @@ def require_auth(func):
                 response = func(request, *args, **kwargs)
                 set_session_cookie(
                     response,
-                    "guest_sess_token",
+                    GUEST_COOKIE_NAME,
                     guest_session.session_token,
                     True,
                 )
@@ -370,7 +372,7 @@ def require_auth(func):
                 response.data["message"].append(SESS_EXP_MSG)
             else:
                 response.data["message"] = [SESS_EXP_MSG]
-            response.delete_cookie("account_sess_token")
+            response.delete_cookie(ACCOUNT_COOKIE_NAME)
         return response
 
     get_metadata(wrapper).min_auth_required = "Guest"
@@ -391,7 +393,7 @@ def require_account_auth(func):
 
     @functools.wraps(func)
     def wrapper(request, *args, **kwargs):
-        acct_token = request.COOKIES.get("account_sess_token")
+        acct_token = request.COOKIES.get(ACCOUNT_COOKIE_NAME)
         logger.debug("Account session token: %s", acct_token)
 
         BAD_AUTH_RESPONSE = Response(
@@ -412,7 +414,7 @@ def require_account_auth(func):
                 response = func(request, *args, **kwargs)
                 # Intercept the response to refresh the session token cookie
                 set_session_cookie(
-                    response, "account_sess_token", acct_token, session.is_extended
+                    response, ACCOUNT_COOKIE_NAME, acct_token, session.is_extended
                 )
                 return response
             except UserSession.DoesNotExist:

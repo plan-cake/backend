@@ -99,6 +99,9 @@ PWD_RESET_EXP_SECONDS = 600  # 10 minutes
 
 URL_CODE_EXP_SECONDS = 1209600  # 14 days
 
+ACCOUNT_COOKIE_NAME = "account_sess_token"
+GUEST_COOKIE_NAME = "guest_sess_token"
+
 GENERIC_ERR_RESPONSE = Response(
     {"error": {"general": ["An unknown error has occurred."]}}, status=500
 )
