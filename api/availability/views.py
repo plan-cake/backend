@@ -27,6 +27,7 @@ from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    check_auth,
     rate_limit,
     require_auth,
     validate_json_input,
@@ -176,7 +177,7 @@ def add_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(DisplayNameCheckSerializer)
 @validate_output(MessageOutputSerializer)
 def check_display_name(request):
