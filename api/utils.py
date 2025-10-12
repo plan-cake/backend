@@ -95,6 +95,112 @@ def get_session(token):
     )
 
 
+def check_auth(func):
+    """
+    A decorator to check if the user is authenticated based on their cookies.
+
+    If the user is not authenticated, a guest account will NOT be created for them.
+
+    The `user` object is made available in the `request` argument if authenticated.
+    Otherwise, `request.user` will be `None`.
+
+    If authenticated, this refreshes the session token cookie with the response.
+    """
+
+    @functools.wraps(func)
+    def wrapper(request, *args, **kwargs):
+        acct_token = request.COOKIES.get("account_sess_token")
+        acct_sess_expired = False
+        if acct_token:
+            logger.debug("Account session token: %s", acct_token)
+            try:
+                with transaction.atomic():
+                    session = get_session(acct_token)
+                    if not session:
+                        # To break out of the rest of the logic
+                        raise UserSession.DoesNotExist
+                    session.save()  # To update last_used to now
+
+                # At this point the account is authenticated
+                request.user = session.user_account
+
+                response = func(request, *args, **kwargs)
+                # Intercept the response to refresh the session token cookie
+                response.set_cookie(
+                    key="account_sess_token",
+                    value=acct_token,
+                    httponly=True,
+                    secure=True,
+                    samesite="Lax",
+                    max_age=(
+                        LONG_SESS_EXP_SECONDS
+                        if session.is_extended
+                        else SESS_EXP_SECONDS
+                    ),
+                )
+                return response
+            except UserSession.DoesNotExist:
+                logger.info("Account session expired.")
+                acct_sess_expired = True
+            except DatabaseError as e:
+                logger.db_error(e)
+                return GENERIC_ERR_RESPONSE
+            except Exception as e:
+                logger.error(e)
+                return GENERIC_ERR_RESPONSE
+
+        # At this point the account session either expired or did not exist
+        guest_token = request.COOKIES.get("guest_sess_token")
+
+        if guest_token:
+            logger.debug("Guest session token: %s", guest_token)
+            # Make sure the guest session token exists (it should)
+            try:
+                with transaction.atomic():
+                    session = get_session(guest_token)
+                    if not session:
+                        raise UserSession.DoesNotExist
+                    session.save()  # Update last_used
+
+                request.user = session.user_account
+                # Run the function
+                response = func(request, *args, **kwargs)
+                response.set_cookie(
+                    key="guest_sess_token",
+                    value=guest_token,
+                    httponly=True,
+                    secure=True,
+                    samesite="Lax",
+                    max_age=LONG_SESS_EXP_SECONDS,
+                )
+            except UserSession.DoesNotExist:
+                logger.info("Guest session expired.")
+                # Do NOT create a new guest account
+                request.user = None
+                # Run the function
+                response = func(request, *args, **kwargs)
+            except Exception as e:
+                logger.error(e)
+                return GENERIC_ERR_RESPONSE
+        else:
+            # Do NOT create a new guest account
+            request.user = None
+            # Run the function
+            response = func(request, *args, **kwargs)
+
+        # Make sure to return a message if the account session expired
+        if acct_sess_expired:
+            SESS_EXP_MSG = "Account session expired."
+            if "message" in response.data:
+                response.data["message"].append(SESS_EXP_MSG)
+            else:
+                response.data["message"] = [SESS_EXP_MSG]
+            response.delete_cookie("account_sess_token")
+        return response
+
+    return wrapper
+
+
 class GuestAccountCreationThrottle(AnonRateThrottle):
     scope = "guest_account_creation"
 
