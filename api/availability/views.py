@@ -305,10 +305,15 @@ def get_all_availability(request):
     The response format is a dictionary of arrays. The keys are timeslots (in ISO format)
     and the values are arrays of the display names of available users for that timeslot.
 
+    The "user_display_name" field is the display name of the current user. If the user
+    has not participated in the event, this will be null.
+
     The "is_creator" field indicates whether the current user is the creator of the event.
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
+
+    user_display_name = None
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -331,10 +336,18 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [],
                     "availability": availability_dict,
                 },
                 status=200,
+            )
+
+        # Check if the user is a participant to get their display name
+        # This checks after the empty participants check to avoid unnecessary queries
+        if user:
+            user_display_name = (
+                participants.filter(user_account=user).first().display_name
             )
 
         if event.date_type == UserEvent.EventType.SPECIFIC:
@@ -358,6 +371,7 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,
                 },
@@ -391,6 +405,7 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,
                 },
