@@ -45,6 +45,10 @@ from api.utils import (
 
 logger = logging.getLogger("api")
 
+EVENT_NOT_FOUND_ERROR = Response(
+    {"error": {"general": ["Event not found."]}}, status=404
+)
+
 
 class EventCreateThrottle(AnonRateThrottle):
     scope = "event_creation"
@@ -319,7 +323,7 @@ def edit_date_event(request):
             EventDateAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -413,7 +417,7 @@ def edit_week_event(request):
             EventWeekdayAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -468,7 +472,7 @@ def get_event_details(request):
         end_hour = timeslots.last().timeslot.hour + 1
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
