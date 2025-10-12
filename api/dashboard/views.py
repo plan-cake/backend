@@ -46,7 +46,8 @@ def get_dashboard(request):
             {
                 "created_events": [],
                 "participated_events": [],
-            }
+            },
+            status=200,
         )
 
     try:
@@ -72,4 +73,6 @@ def get_dashboard(request):
         logger.error(e)
         return GENERIC_ERR_RESPONSE
 
-    return Response({"created_events": my_events, "participated_events": their_events})
+    return Response(
+        {"created_events": my_events, "participated_events": their_events}, status=200
+    )
