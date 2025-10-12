@@ -295,7 +295,7 @@ def get_self_availability(request):
 
 
 @api_endpoint("GET")
-@require_auth
+@check_auth
 @validate_query_param_input(EventCodeSerializer)
 @validate_output(EventAvailabilitySerializer)
 def get_all_availability(request):
