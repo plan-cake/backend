@@ -455,7 +455,7 @@ def remove_self_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(DisplayNameCheckSerializer)
 @validate_output(MessageOutputSerializer)
 def remove_availability(request):
@@ -468,12 +468,17 @@ def remove_availability(request):
     event_code = request.validated_data.get("event_code")
     display_name = request.validated_data.get("display_name")
 
+    NOT_CREATOR_ERROR = Response(
+        {"error": {"general": ["User must be event creator."]}}, status=403
+    )
+
+    if not user:
+        return NOT_CREATOR_ERROR
+
     try:
         event = UserEvent.objects.get(url_codes=event_code)
         if event.user_account != user:
-            return Response(
-                {"error": {"general": ["User must be event creator."]}}, status=403
-            )
+            return NOT_CREATOR_ERROR
         # Because of the foreign key cascades, this should remove everything
         EventParticipant.objects.get(
             user_event=event, display_name=display_name
