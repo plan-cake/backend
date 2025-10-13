@@ -42,8 +42,6 @@ def get_readable_field_name(field_name):
             return "string"
         case "TimeZoneField":
             return "string"
-        case "DictField":
-            return "object"
         case _:
             return "object"
 
@@ -78,9 +76,8 @@ def get_field_info(field, include_required):
             ),
         }
     else:
-        field_type = get_readable_field_name(field.__class__.__name__)
         data = {
-            "type": field_type,
+            "type": get_readable_field_name(field.__class__.__name__),
         }
         if include_required:
             data["required"] = field.required
