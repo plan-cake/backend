@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.auth.serializers import (
+    CheckPasswordSerializer,
     EmailSerializer,
     EmailVerifySerializer,
     LoginSerializer,
@@ -16,7 +17,7 @@ from api.auth.serializers import (
     PasswordSerializer,
     RegisterAccountSerializer,
 )
-from api.auth.utils import validate_password
+from api.auth.utils import list_failed_criteria, validate_password
 from api.models import (
     PasswordResetToken,
     UnverifiedUserAccount,
@@ -76,8 +77,11 @@ def register(request):
 
     try:
         # Validate the password first
-        if errors := validate_password(password):
-            return Response({"error": {"password": errors}}, status=400)
+        is_strong, criteria = validate_password(password)
+        if not is_strong:
+            return Response(
+                {"error": {"password": list_failed_criteria(criteria)}}, status=400
+            )
         pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         # Check if the email already exists
@@ -309,19 +313,17 @@ def login(request):
 
 @api_endpoint("POST")
 @validate_json_input(PasswordSerializer)
-@validate_output(MessageOutputSerializer)
+@validate_output(CheckPasswordSerializer)
 def check_password(request):
     """
     Checks if the provided password meets the security criteria.
 
-    Returns a list of issues with the password if invalid.
+    Returns a list of password criteria with whether they are met or not.
     """
     password = request.validated_data.get("password")
 
-    if errors := validate_password(password):
-        return Response({"error": {"password": errors}}, status=400)
-
-    return Response({"message": ["Password is valid."]})
+    is_strong, criteria = validate_password(password)
+    return Response({"is_strong": is_strong, "criteria": criteria}, status=200)
 
 
 @api_endpoint("GET")
@@ -411,9 +413,12 @@ def reset_password(request):
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
 
-    if errors := validate_password(new_password):
+    is_strong, criteria = validate_password(new_password)
+    if not is_strong:
         logger.info("Password reset failed: Invalid new password.")
-        return Response({"error": {"new_password": errors}}, status=400)
+        return Response(
+            {"error": {"new_password": list_failed_criteria(criteria)}}, status=400
+        )
 
     try:
         with transaction.atomic():
