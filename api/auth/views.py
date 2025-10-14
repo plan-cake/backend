@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.auth.serializers import (
+    CheckPasswordSerializer,
     EmailSerializer,
     EmailVerifySerializer,
     LoginSerializer,
@@ -16,7 +17,7 @@ from api.auth.serializers import (
     PasswordSerializer,
     RegisterAccountSerializer,
 )
-from api.auth.utils import validate_password
+from api.auth.utils import list_failed_criteria, validate_password
 from api.models import (
     PasswordResetToken,
     UnverifiedUserAccount,
@@ -25,6 +26,7 @@ from api.models import (
     UserSession,
 )
 from api.settings import (
+    ACCOUNT_COOKIE_NAME,
     BASE_URL,
     EMAIL_CODE_EXP_SECONDS,
     GENERIC_ERR_RESPONSE,
@@ -39,6 +41,7 @@ from api.utils import (
     get_session,
     rate_limit,
     require_account_auth,
+    set_session_cookie,
     validate_json_input,
     validate_output,
 )
@@ -74,8 +77,11 @@ def register(request):
 
     try:
         # Validate the password first
-        if errors := validate_password(password):
-            return Response({"error": {"password": errors}}, status=400)
+        is_strong, criteria = validate_password(password)
+        if not is_strong:
+            return Response(
+                {"error": {"password": list_failed_criteria(criteria)}}, status=400
+            )
         pwd_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
         # Check if the email already exists
@@ -244,7 +250,7 @@ def login(request):
     remember_me = request.validated_data.get("remember_me")
 
     # Check if the user is already logged in
-    acct_token = request.COOKIES.get("account_sess_token")
+    acct_token = request.COOKIES.get(ACCOUNT_COOKIE_NAME)
     if acct_token:
         try:
             with transaction.atomic():
@@ -259,15 +265,8 @@ def login(request):
                 {"error": {"general": ["You are already logged in."]}}, status=400
             )
             # Refresh the session token cookie
-            response.set_cookie(
-                key="account_sess_token",
-                value=acct_token,
-                httponly=True,
-                secure=True,
-                samesite="Lax",
-                max_age=(
-                    LONG_SESS_EXP_SECONDS if session.is_extended else SESS_EXP_SECONDS
-                ),
+            set_session_cookie(
+                response, ACCOUNT_COOKIE_NAME, acct_token, session.is_extended
             )
             return response
         except UserSession.DoesNotExist:
@@ -308,32 +307,23 @@ def login(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Login successful."]}, status=200)
-    response.set_cookie(
-        key="account_sess_token",
-        value=session_token,
-        httponly=True,
-        secure=True,
-        samesite="Lax",
-        max_age=LONG_SESS_EXP_SECONDS if remember_me else SESS_EXP_SECONDS,
-    )
+    set_session_cookie(response, ACCOUNT_COOKIE_NAME, session_token, remember_me)
     return response
 
 
 @api_endpoint("POST")
 @validate_json_input(PasswordSerializer)
-@validate_output(MessageOutputSerializer)
+@validate_output(CheckPasswordSerializer)
 def check_password(request):
     """
     Checks if the provided password meets the security criteria.
 
-    Returns a list of issues with the password if invalid.
+    Returns a list of password criteria with whether they are met or not.
     """
     password = request.validated_data.get("password")
 
-    if errors := validate_password(password):
-        return Response({"error": {"password": errors}}, status=400)
-
-    return Response({"message": ["Password is valid."]})
+    is_strong, criteria = validate_password(password)
+    return Response({"is_strong": is_strong, "criteria": criteria}, status=200)
 
 
 @api_endpoint("GET")
@@ -423,9 +413,12 @@ def reset_password(request):
     reset_token = request.validated_data.get("reset_token")
     new_password = request.validated_data.get("new_password")
 
-    if errors := validate_password(new_password):
+    is_strong, criteria = validate_password(new_password)
+    if not is_strong:
         logger.info("Password reset failed: Invalid new password.")
-        return Response({"error": {"new_password": errors}}, status=400)
+        return Response(
+            {"error": {"new_password": list_failed_criteria(criteria)}}, status=400
+        )
 
     try:
         with transaction.atomic():
@@ -482,7 +475,7 @@ def logout(request):
     database and the cookie on the client.
     """
     try:
-        if token := request.COOKIES.get("account_sess_token"):
+        if token := request.COOKIES.get(ACCOUNT_COOKIE_NAME):
             UserSession.objects.filter(session_token=token).delete()
         else:
             logger.info("User already logged out.")
@@ -494,7 +487,7 @@ def logout(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Logged out successfully."]}, status=200)
-    response.delete_cookie("account_sess_token")
+    response.delete_cookie(ACCOUNT_COOKIE_NAME)
     return response
 
 
@@ -522,5 +515,5 @@ def delete_account(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Account deleted successfully."]}, status=200)
-    response.delete_cookie("account_sess_token")
+    response.delete_cookie(ACCOUNT_COOKIE_NAME)
     return response

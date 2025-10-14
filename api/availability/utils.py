@@ -39,11 +39,17 @@ def get_event_grid(event):
 
 
 def check_name_available(event, user, display_name):
-    existing_participant = EventParticipant.objects.filter(
-        ~Q(user_account=user),
-        user_event=event,
-        display_name=display_name,
-    ).first()
+    if user:
+        existing_participant = EventParticipant.objects.filter(
+            ~Q(user_account=user),
+            user_event=event,
+            display_name=display_name,
+        ).first()
+    else:
+        existing_participant = EventParticipant.objects.filter(
+            user_event=event,
+            display_name=display_name,
+        ).first()
     return existing_participant is None
 
 

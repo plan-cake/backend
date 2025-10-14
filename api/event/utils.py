@@ -38,7 +38,7 @@ def check_custom_code(code):
         "login",
         "new-event",
         "reset-password",
-        "sign-up",
+        "register",
         "verify-email",
     ]
     if code in RESERVED_KEYWORDS or not check_code_available(code):

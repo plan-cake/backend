@@ -27,6 +27,7 @@ from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    check_auth,
     rate_limit,
     require_auth,
     validate_json_input,
@@ -176,7 +177,7 @@ def add_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(DisplayNameCheckSerializer)
 @validate_output(MessageOutputSerializer)
 def check_display_name(request):
@@ -217,8 +218,14 @@ def check_display_name(request):
         return GENERIC_ERR_RESPONSE
 
 
+NOT_PARTICIPATED_ERROR = Response(
+    {"error": {"general": ["User has not participated in this event."]}},
+    status=400,
+)
+
+
 @api_endpoint("GET")
-@require_auth
+@check_auth
 @validate_query_param_input(EventCodeSerializer)
 @validate_output(AvailableDatesSerializer)
 def get_self_availability(request):
@@ -232,6 +239,10 @@ def get_self_availability(request):
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
+
+    # We can be ambiguous to avoid creating more guest accounts
+    if not user:
+        return NOT_PARTICIPATED_ERROR
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -274,10 +285,7 @@ def get_self_availability(request):
             status=404,
         )
     except EventParticipant.DoesNotExist:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -287,7 +295,7 @@ def get_self_availability(request):
 
 
 @api_endpoint("GET")
-@require_auth
+@check_auth
 @validate_query_param_input(EventCodeSerializer)
 @validate_output(EventAvailabilitySerializer)
 def get_all_availability(request):
@@ -297,10 +305,15 @@ def get_all_availability(request):
     The response format is a dictionary of arrays. The keys are timeslots (in ISO format)
     and the values are arrays of the display names of available users for that timeslot.
 
+    The "user_display_name" field is the display name of the current user. If the user
+    has not participated in the event, this will be null.
+
     The "is_creator" field indicates whether the current user is the creator of the event.
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
+
+    user_display_name = None
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -323,11 +336,18 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [],
                     "availability": availability_dict,
                 },
                 status=200,
             )
+
+        # Check if the user is a participant to get their display name
+        # This checks after the empty participants check to avoid unnecessary queries
+        if user:
+            participant = participants.filter(user_account=user).first()
+            user_display_name = participant.display_name if participant else None
 
         if event.date_type == UserEvent.EventType.SPECIFIC:
             availabilities = (
@@ -350,6 +370,7 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,
                 },
@@ -383,6 +404,7 @@ def get_all_availability(request):
             return Response(
                 {
                     "is_creator": is_creator,
+                    "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,
                 },
@@ -403,7 +425,7 @@ def get_all_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(EventCodeSerializer)
 @validate_output(MessageOutputSerializer)
 def remove_self_availability(request):
@@ -414,6 +436,9 @@ def remove_self_availability(request):
     """
     user = request.user
     event_code = request.validated_data.get("event_code")
+
+    if not user:
+        return NOT_PARTICIPATED_ERROR
 
     try:
         event = UserEvent.objects.get(url_codes=event_code)
@@ -426,10 +451,7 @@ def remove_self_availability(request):
             status=404,
         )
     except EventParticipant.DoesNotExist:
-        return Response(
-            {"error": {"general": ["User has not participated in this event."]}},
-            status=400,
-        )
+        return NOT_PARTICIPATED_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -441,7 +463,7 @@ def remove_self_availability(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(DisplayNameCheckSerializer)
 @validate_output(MessageOutputSerializer)
 def remove_availability(request):
@@ -454,12 +476,17 @@ def remove_availability(request):
     event_code = request.validated_data.get("event_code")
     display_name = request.validated_data.get("display_name")
 
+    NOT_CREATOR_ERROR = Response(
+        {"error": {"general": ["User must be event creator."]}}, status=403
+    )
+
+    if not user:
+        return NOT_CREATOR_ERROR
+
     try:
         event = UserEvent.objects.get(url_codes=event_code)
         if event.user_account != user:
-            return Response(
-                {"error": {"general": ["User must be event creator."]}}, status=403
-            )
+            return NOT_CREATOR_ERROR
         # Because of the foreign key cascades, this should remove everything
         EventParticipant.objects.get(
             user_event=event, display_name=display_name

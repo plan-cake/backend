@@ -79,13 +79,13 @@ USE_TZ = False
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
-        "user_account_creation": "4/hour",
+        "user_account_creation": "3/hour",
         "resend_email": "3/hour",
-        "guest_account_creation": "2/hour",
-        "login": "10/hour",
+        "guest_account_creation": "1/min",
+        "login": "6/hour",
         "password_reset": "3/hour",
         "event_creation": "6/hour",
-        "availability_add": "6/hour",
+        "availability_add": "12/hour",
     },
 }
 
@@ -93,11 +93,14 @@ SESS_EXP_SECONDS = 3600  # 1 hour
 
 LONG_SESS_EXP_SECONDS = 31536000  # 1 year
 
-EMAIL_CODE_EXP_SECONDS = 1800  # 30 minutes
+EMAIL_CODE_EXP_SECONDS = 600  # 10 minutes
 
-PWD_RESET_EXP_SECONDS = 1800  # 30 minutes
+PWD_RESET_EXP_SECONDS = 600  # 10 minutes
 
 URL_CODE_EXP_SECONDS = 1209600  # 14 days
+
+ACCOUNT_COOKIE_NAME = "account_sess_token"
+GUEST_COOKIE_NAME = "guest_sess_token"
 
 GENERIC_ERR_RESPONSE = Response(
     {"error": {"general": ["An unknown error has occurred."]}}, status=500

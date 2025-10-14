@@ -21,6 +21,13 @@ class LoginSerializer(RegisterAccountSerializer):
     remember_me = serializers.BooleanField(default=False, required=False)
 
 
+class CheckPasswordSerializer(serializers.Serializer):
+    is_strong = serializers.BooleanField(required=True)
+    criteria = serializers.DictField(
+        child=serializers.BooleanField(), required=True, allow_empty=False
+    )
+
+
 class PasswordResetSerializer(serializers.Serializer):
     reset_token = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)

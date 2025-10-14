@@ -56,10 +56,19 @@ def get_field_info(field, include_required):
         }
         if include_required:
             data["required"] = field.required
+    elif field.__class__.__name__ == "DictField":
+        data = {
+            "type": "map",
+            "key": "string",
+            "value": get_field_info(field.child, include_required=include_required),
+        }
+        if include_required:
+            data["required"] = field.required
     elif (
         get_readable_field_name(field.__class__.__name__) == "object"
         and field.__class__.__name__ != "JSONField"
     ):
+        # This is only for nested serializers
         data = {
             "type": "object",
             "properties": get_serializer_format(
@@ -67,9 +76,8 @@ def get_field_info(field, include_required):
             ),
         }
     else:
-        field_type = get_readable_field_name(field.__class__.__name__)
         data = {
-            "type": field_type,
+            "type": get_readable_field_name(field.__class__.__name__),
         }
         if include_required:
             data["required"] = field.required

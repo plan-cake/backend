@@ -36,6 +36,7 @@ from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    check_auth,
     rate_limit,
     require_auth,
     validate_json_input,
@@ -44,6 +45,10 @@ from api.utils import (
 )
 
 logger = logging.getLogger("api")
+
+EVENT_NOT_FOUND_ERROR = Response(
+    {"error": {"general": ["Event not found."]}}, status=404
+)
 
 
 class EventCreateThrottle(AnonRateThrottle):
@@ -230,7 +235,7 @@ def check_code(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(DateEventEditSerializer)
 @validate_output(MessageOutputSerializer)
 def edit_date_event(request):
@@ -248,6 +253,9 @@ def edit_date_event(request):
     start_hour = request.validated_data.get("start_hour")
     end_hour = request.validated_data.get("end_hour")
     time_zone = request.validated_data.get("time_zone")
+
+    if not user:
+        return EVENT_NOT_FOUND_ERROR
 
     user_date = datetime.now(ZoneInfo(time_zone)).date()
     try:
@@ -319,7 +327,7 @@ def edit_date_event(request):
             EventDateAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -332,7 +340,7 @@ def edit_date_event(request):
 
 
 @api_endpoint("POST")
-@require_auth
+@check_auth
 @validate_json_input(WeekEventEditSerializer)
 @validate_output(MessageOutputSerializer)
 def edit_week_event(request):
@@ -350,6 +358,9 @@ def edit_week_event(request):
     start_hour = request.validated_data.get("start_hour")
     end_hour = request.validated_data.get("end_hour")
     time_zone = request.validated_data.get("time_zone")
+
+    if not user:
+        return EVENT_NOT_FOUND_ERROR
 
     try:
         # Do everything inside a transaction to ensure atomicity
@@ -413,7 +424,7 @@ def edit_week_event(request):
             EventWeekdayAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -468,7 +479,7 @@ def get_event_details(request):
         end_hour = timeslots.last().timeslot.hour + 1
 
     except UserEvent.DoesNotExist:
-        return Response({"error": {"general": ["Event not found."]}}, status=404)
+        return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
