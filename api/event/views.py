@@ -278,7 +278,7 @@ def edit_date_event(request):
             # If the start date is after today, it cannot be moved to a date earlier than today.
             # If the start date is before today, it cannot be moved earlier at all.
             earliest_date = user_date
-            if existing_start_date > user_date:
+            if existing_start_date < user_date:
                 earliest_date = existing_start_date
             errors = validate_date_input(
                 start_date, end_date, start_hour, end_hour, earliest_date, True
