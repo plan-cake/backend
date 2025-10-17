@@ -277,7 +277,14 @@ def get_self_availability(request):
                 for a in availabilities
             ]
 
-        return Response({"available_dates": data}, status=200)
+        return Response(
+            {
+                "display_name": participant.display_name,
+                "available_dates": data,
+                "time_zone": participant.time_zone,
+            },
+            status=200,
+        )
 
     except UserEvent.DoesNotExist:
         return Response(

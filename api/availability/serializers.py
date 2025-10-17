@@ -31,10 +31,11 @@ class AvailabilityAddSerializer(
     time_zone = TimeZoneField(required=True)
 
 
-class AvailableDatesSerializer(serializers.Serializer):
+class AvailableDatesSerializer(DisplayNameSerializer):
     available_dates = serializers.ListField(
         child=serializers.DateTimeField(required=True), required=True
     )
+    time_zone = TimeZoneField(required=True)
 
 
 class EventAvailabilitySerializer(serializers.Serializer):
