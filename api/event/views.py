@@ -19,6 +19,8 @@ from api.event.serializers import (
 from api.event.utils import (
     check_custom_code,
     daterange,
+    event_lookup,
+    format_event_info,
     generate_code,
     timerange,
     validate_date_input,
@@ -450,34 +452,9 @@ def get_event_details(request):
     """
     event_code = request.validated_data.get("event_code")
 
-    start_date = None
-    end_date = None
-    start_weekday = None
-    end_weekday = None
-    event_type = ""
-    start_hour = -1
-    end_hour = -1
     try:
-        timeslots = None
-        event = UserEvent.objects.get(url_codes=event_code)
-        if event.date_type == UserEvent.EventType.SPECIFIC:
-            event_type = "Date"
-            timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
-                "timeslot"
-            )
-            start_date = timeslots.first().timeslot.date()
-            end_date = timeslots.last().timeslot.date()
-        else:
-            event_type = "Week"
-            timeslots = EventWeekdayTimeslot.objects.filter(user_event=event).order_by(
-                "weekday", "timeslot"
-            )
-            start_weekday = timeslots.first().weekday
-            end_weekday = timeslots.last().weekday
-        start_hour = timeslots.first().timeslot.hour
-        # The last timeslot will always be XX:45, so just add 1 to the hour
-        end_hour = timeslots.last().timeslot.hour + 1
-
+        event = event_lookup(event_code)
+        data = format_event_info(event)
     except UserEvent.DoesNotExist:
         return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
@@ -486,25 +463,6 @@ def get_event_details(request):
     except Exception as e:
         logger.error(e)
         return GENERIC_ERR_RESPONSE
-
-    data = {
-        "title": event.title,
-        "event_type": event_type,
-        "start_hour": start_hour,
-        "end_hour": end_hour,
-        "time_zone": event.time_zone,
-    }
-    # Add the extra fields only if not null, otherwise the serializer complains
-    if event.duration:
-        data["duration"] = event.duration
-    if start_date:
-        data["start_date"] = start_date
-    if end_date:
-        data["end_date"] = end_date
-    if start_weekday is not None:
-        data["start_weekday"] = start_weekday
-    if end_weekday is not None:
-        data["end_weekday"] = end_weekday
 
     return Response(
         data,

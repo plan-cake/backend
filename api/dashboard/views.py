@@ -5,7 +5,8 @@ from django.db.models import Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
-from api.dashboard.utils import format_event
+from api.event.serializers import EventDetailSerializer
+from api.event.utils import format_event_info
 from api.models import EventParticipant, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import api_endpoint, check_auth, validate_output
@@ -13,18 +14,11 @@ from api.utils import api_endpoint, check_auth, validate_output
 logger = logging.getLogger("api")
 
 
-class EventSerializer(serializers.Serializer):
-    title = serializers.CharField(required=True)
-    event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
-    participants = serializers.ListField(
-        child=serializers.CharField(required=True, max_length=25), required=True
-    )
-    event_code = serializers.CharField(required=True, max_length=255)
-
-
 class DashboardSerializer(serializers.Serializer):
-    created_events = serializers.ListField(child=EventSerializer(), required=True)
-    participated_events = serializers.ListField(child=EventSerializer(), required=True)
+    created_events = serializers.ListField(child=EventDetailSerializer(), required=True)
+    participated_events = serializers.ListField(
+        child=EventDetailSerializer(), required=True
+    )
 
 
 @api_endpoint("GET")
@@ -61,9 +55,9 @@ def get_dashboard(request):
             user_event__url_codes__isnull=False,
         ).order_by("user_event__created_at")
 
-        my_events = [format_event(event) for event in created_events]
+        my_events = [format_event_info(event) for event in created_events]
         their_events = [
-            format_event(participant.user_event) for participant in participants
+            format_event_info(participant.user_event) for participant in participants
         ]
 
     except DatabaseError as e:

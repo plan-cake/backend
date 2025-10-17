@@ -3,7 +3,7 @@ import re
 import string
 from datetime import datetime, time, timedelta
 
-from api.models import UrlCode
+from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
 from api.settings import (
     MAX_EVENT_DAYS,
     RAND_URL_CODE_ATTEMPTS,
@@ -116,3 +116,67 @@ def validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour):
     if start_hour >= end_hour:
         errors["end_hour"] = ["End hour must be after start hour."]
     return errors
+
+
+def get_event_type(date_type):
+    match date_type:
+        case UserEvent.EventType.SPECIFIC:
+            return "Date"
+        case UserEvent.EventType.GENERIC:
+            return "Week"
+
+
+def event_lookup(event_code: str):
+    return UserEvent.objects.get(url_codes=event_code)
+
+
+def format_event_info(event: UserEvent):
+    start_date = None
+    end_date = None
+    start_weekday = None
+    end_weekday = None
+    event_type = ""
+    start_hour = -1
+    end_hour = -1
+
+    timeslots = None
+    event_type = get_event_type(event.date_type)
+    print(event_type)
+    match event_type:
+        case "Date":
+            timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
+                "timeslot"
+            )
+            start_date = timeslots.first().timeslot.date()
+            end_date = timeslots.last().timeslot.date()
+        case "Week":
+            timeslots = EventWeekdayTimeslot.objects.filter(user_event=event).order_by(
+                "weekday", "timeslot"
+            )
+            start_weekday = timeslots.first().weekday
+            end_weekday = timeslots.last().weekday
+
+    start_hour = timeslots.first().timeslot.hour
+    # The last timeslot will always be XX:45, so just add 1 to the hour
+    end_hour = timeslots.last().timeslot.hour + 1
+
+    data = {
+        "title": event.title,
+        "event_type": event_type,
+        "start_hour": start_hour,
+        "end_hour": end_hour,
+        "time_zone": event.time_zone,
+    }
+    # Add the extra fields only if not null, otherwise the serializer complains
+    if event.duration:
+        data["duration"] = event.duration
+    if start_date:
+        data["start_date"] = start_date
+    if end_date:
+        data["end_date"] = end_date
+    if start_weekday is not None:
+        data["start_weekday"] = start_weekday
+    if end_weekday is not None:
+        data["end_weekday"] = end_weekday
+
+    return data
