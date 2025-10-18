@@ -14,10 +14,16 @@ from api.utils import api_endpoint, check_auth, validate_output
 logger = logging.getLogger("api")
 
 
+class DashboardEventSerializer(EventDetailSerializer):
+    event_code = serializers.CharField(required=True, max_length=255)
+
+
 class DashboardSerializer(serializers.Serializer):
-    created_events = serializers.ListField(child=EventDetailSerializer(), required=True)
+    created_events = serializers.ListField(
+        child=DashboardEventSerializer(), required=True
+    )
     participated_events = serializers.ListField(
-        child=EventDetailSerializer(), required=True
+        child=DashboardEventSerializer(), required=True
     )
 
 
@@ -45,20 +51,31 @@ def get_dashboard(request):
         )
 
     try:
-        created_events = UserEvent.objects.filter(
-            user_account=user, url_codes__isnull=False
-        ).order_by("created_at")
+        created_events = (
+            UserEvent.objects.filter(user_account=user, url_code__isnull=False)
+            .order_by("created_at")
+            .select_related("url_code")
+        )
         # Don't include events that the user both created and participated in
-        participants = EventParticipant.objects.filter(
-            ~Q(user_event__user_account=user),
-            user_account=user,
-            user_event__url_codes__isnull=False,
-        ).order_by("user_event__created_at")
+        participations = (
+            EventParticipant.objects.filter(
+                ~Q(user_event__user_account=user),
+                user_account=user,
+                user_event__url_code__isnull=False,
+            )
+            .order_by("user_event__created_at")
+            .select_related("user_event__url_code")
+        )
 
-        my_events = [format_event_info(event) for event in created_events]
-        their_events = [
-            format_event_info(participant.user_event) for participant in participants
-        ]
+        my_events = []
+        for event in created_events:
+            my_events.append(format_event_info(event))
+            my_events[-1]["event_code"] = event.url_code.url_code
+        their_events = []
+        for event in participations:
+            their_events = format_event_info(event.user_event)
+            if event.user_event.url_code is not None:
+                their_events["event_code"] = event.user_event.url_code.url_code
 
     except DatabaseError as e:
         logger.db_error(e)
