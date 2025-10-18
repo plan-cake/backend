@@ -73,9 +73,9 @@ def get_dashboard(request):
             my_events[-1]["event_code"] = event.url_code.url_code
         their_events = []
         for event in participations:
-            their_events = format_event_info(event.user_event)
+            their_events.append(format_event_info(event.user_event))
             if event.user_event.url_code is not None:
-                their_events["event_code"] = event.user_event.url_code.url_code
+                their_events[-1]["event_code"] = event.user_event.url_code.url_code
 
     except DatabaseError as e:
         logger.db_error(e)
