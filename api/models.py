@@ -87,7 +87,7 @@ class UserEvent(models.Model):
 
 class UrlCode(models.Model):
     url_code = models.CharField(max_length=255, primary_key=True)
-    user_event = models.ForeignKey(
+    user_event = models.OneToOneField(
         UserEvent, on_delete=models.CASCADE, related_name="url_codes"
     )
     last_used = DateTimeNoTZField(auto_now=True)
