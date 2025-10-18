@@ -141,7 +141,6 @@ def format_event_info(event: UserEvent):
 
     timeslots = None
     event_type = get_event_type(event.date_type)
-    print(event_type)
     match event_type:
         case "Date":
             timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
