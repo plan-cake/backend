@@ -73,7 +73,7 @@ def add_availability(request):
 
     try:
         with transaction.atomic():
-            user_event = UserEvent.objects.get(url_codes=event_code)
+            user_event = UserEvent.objects.get(url_code=event_code)
 
             if not check_name_available(user_event, user, display_name):
                 return Response(
@@ -194,7 +194,7 @@ def check_display_name(request):
     display_name = request.validated_data.get("display_name")
 
     try:
-        event = UserEvent.objects.get(url_codes=event_code)
+        event = UserEvent.objects.get(url_code=event_code)
         if check_name_available(event, user, display_name):
             return Response(
                 {"message": ["Name is available."]},
@@ -245,7 +245,7 @@ def get_self_availability(request):
         return NOT_PARTICIPATED_ERROR
 
     try:
-        event = UserEvent.objects.get(url_codes=event_code)
+        event = UserEvent.objects.get(url_code=event_code)
         participant = EventParticipant.objects.get(user_event=event, user_account=user)
 
         if event.date_type == UserEvent.EventType.SPECIFIC:
@@ -323,7 +323,7 @@ def get_all_availability(request):
     user_display_name = None
 
     try:
-        event = UserEvent.objects.get(url_codes=event_code)
+        event = UserEvent.objects.get(url_code=event_code)
         is_creator = event.user_account == user
         participants = event.participants.all()
 
@@ -448,7 +448,7 @@ def remove_self_availability(request):
         return NOT_PARTICIPATED_ERROR
 
     try:
-        event = UserEvent.objects.get(url_codes=event_code)
+        event = UserEvent.objects.get(url_code=event_code)
         # Because of the foreign key cascades, this should remove everything
         EventParticipant.objects.get(user_event=event, user_account=user).delete()
 
@@ -491,7 +491,7 @@ def remove_availability(request):
         return NOT_CREATOR_ERROR
 
     try:
-        event = UserEvent.objects.get(url_codes=event_code)
+        event = UserEvent.objects.get(url_code=event_code)
         if event.user_account != user:
             return NOT_CREATOR_ERROR
         # Because of the foreign key cascades, this should remove everything

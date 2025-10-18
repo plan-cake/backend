@@ -127,7 +127,7 @@ def get_event_type(date_type):
 
 
 def event_lookup(event_code: str):
-    return UserEvent.objects.get(url_codes=event_code)
+    return UserEvent.objects.get(url_code=event_code)
 
 
 def format_event_info(event: UserEvent):

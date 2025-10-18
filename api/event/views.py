@@ -265,7 +265,7 @@ def edit_date_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code,
+                url_code=event_code,
                 user_account=user,
                 date_type=UserEvent.EventType.SPECIFIC,
             )
@@ -369,7 +369,7 @@ def edit_week_event(request):
         with transaction.atomic():
             # Find the event
             event = UserEvent.objects.get(
-                url_codes=event_code,
+                url_code=event_code,
                 user_account=user,
                 date_type=UserEvent.EventType.GENERIC,
             )
