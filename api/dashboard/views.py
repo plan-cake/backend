@@ -1,13 +1,18 @@
 import logging
 
 from django.db import DatabaseError
-from django.db.models import Q
+from django.db.models import Prefetch, Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
 from api.event.serializers import EventDetailSerializer
 from api.event.utils import format_event_info
-from api.models import EventParticipant, UserEvent
+from api.models import (
+    EventDateTimeslot,
+    EventParticipant,
+    EventWeekdayTimeslot,
+    UserEvent,
+)
 from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import api_endpoint, check_auth, validate_output
 
@@ -55,6 +60,18 @@ def get_dashboard(request):
             UserEvent.objects.filter(user_account=user, url_code__isnull=False)
             .order_by("created_at")
             .select_related("url_code")
+            .prefetch_related(
+                Prefetch(
+                    "date_timeslots",
+                    queryset=EventDateTimeslot.objects.order_by("timeslot"),
+                ),
+                Prefetch(
+                    "weekday_timeslots",
+                    queryset=EventWeekdayTimeslot.objects.order_by(
+                        "weekday", "timeslot"
+                    ),
+                ),
+            )
         )
         # Don't include events that the user both created and participated in
         participations = (
@@ -65,6 +82,18 @@ def get_dashboard(request):
             )
             .order_by("user_event__created_at")
             .select_related("user_event__url_code")
+            .prefetch_related(
+                Prefetch(
+                    "user_event__date_timeslots",
+                    queryset=EventDateTimeslot.objects.order_by("timeslot"),
+                ),
+                Prefetch(
+                    "user_event__weekday_timeslots",
+                    queryset=EventWeekdayTimeslot.objects.order_by(
+                        "weekday", "timeslot"
+                    ),
+                ),
+            )
         )
 
         my_events = []

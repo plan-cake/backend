@@ -3,6 +3,8 @@ import re
 import string
 from datetime import datetime, time, timedelta
 
+from django.db.models import Prefetch
+
 from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
 from api.settings import (
     MAX_EVENT_DAYS,
@@ -127,10 +129,31 @@ def get_event_type(date_type):
 
 
 def event_lookup(event_code: str):
-    return UserEvent.objects.get(url_code=event_code)
+    """
+    Looks up an event by its URL code.
+
+    Also prefetches related timeslot data for efficiency.
+    """
+    return UserEvent.objects.prefetch_related(
+        Prefetch(
+            "date_timeslots", queryset=EventDateTimeslot.objects.order_by("timeslot")
+        ),
+        Prefetch(
+            "weekday_timeslots",
+            queryset=EventWeekdayTimeslot.objects.order_by("weekday", "timeslot"),
+        ),
+    ).get(url_code=event_code)
 
 
-def format_event_info(event: UserEvent):
+def format_event_info(
+    event: UserEvent,
+):
+    """
+    Formats event info into a dictionary to satisfy the output serializers on certain
+    endpoints.
+
+    For query efficiency, the event's timeslots should be prefetched.
+    """
     start_date = None
     end_date = None
     start_weekday = None
@@ -139,25 +162,26 @@ def format_event_info(event: UserEvent):
     start_hour = -1
     end_hour = -1
 
-    timeslots = None
     event_type = get_event_type(event.date_type)
+    first_timeslot = None
+    last_timeslot = None
     match event_type:
         case "Date":
-            timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
-                "timeslot"
-            )
-            start_date = timeslots.first().timeslot.date()
-            end_date = timeslots.last().timeslot.date()
+            all_timeslots = list(event.date_timeslots.all())
+            first_timeslot = all_timeslots[0]
+            last_timeslot = all_timeslots[-1]
+            start_date = first_timeslot.timeslot.date()
+            end_date = last_timeslot.timeslot.date()
         case "Week":
-            timeslots = EventWeekdayTimeslot.objects.filter(user_event=event).order_by(
-                "weekday", "timeslot"
-            )
-            start_weekday = timeslots.first().weekday
-            end_weekday = timeslots.last().weekday
+            all_timeslots = list(event.weekday_timeslots.all())
+            first_timeslot = all_timeslots[0]
+            last_timeslot = all_timeslots[-1]
+            start_weekday = first_timeslot.weekday
+            end_weekday = last_timeslot.weekday
 
-    start_hour = timeslots.first().timeslot.hour
+    start_hour = first_timeslot.timeslot.hour
     # The last timeslot will always be XX:45, so just add 1 to the hour
-    end_hour = timeslots.last().timeslot.hour + 1
+    end_hour = last_timeslot.timeslot.hour + 1
 
     data = {
         "title": event.title,
