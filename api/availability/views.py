@@ -359,7 +359,7 @@ def get_all_availability(request):
         if event.date_type == UserEvent.EventType.SPECIFIC:
             availabilities = (
                 EventDateAvailability.objects.filter(event_participant__in=participants)
-                .select_related("event_date_timeslot")
+                .select_related("event_date_timeslot", "event_participant")
                 .order_by(
                     "event_date_timeslot__timeslot", "event_participant__display_name"
                 )
@@ -388,7 +388,7 @@ def get_all_availability(request):
                 EventWeekdayAvailability.objects.filter(
                     event_participant__in=participants
                 )
-                .select_related("event_weekday_timeslot")
+                .select_related("event_weekday_timeslot", "event_participant")
                 .order_by(
                     "event_weekday_timeslot__weekday",
                     "event_weekday_timeslot__timeslot",
