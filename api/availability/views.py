@@ -268,8 +268,6 @@ def get_self_availability(request):
                     "event_weekday_timeslot__timeslot",
                 )
             )
-            print(availabilities[0].event_weekday_timeslot.timeslot)
-            print(type(availabilities[0].event_weekday_timeslot.timeslot))
             data = [
                 get_weekday_date(
                     a.event_weekday_timeslot.weekday, a.event_weekday_timeslot.timeslot
