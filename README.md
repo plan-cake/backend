@@ -1,6 +1,6 @@
-# plancake Backend
+# Plancake Backend
 
-The API for the scheduling platform *plancake*.
+The API for the scheduling platform *Plancake*.
 
 ## Project Setup
 *(Run all commands from the root directory)*
