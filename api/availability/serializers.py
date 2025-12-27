@@ -17,9 +17,7 @@ class DisplayNameCheckSerializer(EventCodeSerializer, DisplayNameSerializer):
 
 class AvailabilitySerializer(serializers.Serializer):
     availability = serializers.ListField(
-        child=serializers.ListField(
-            child=serializers.BooleanField(), required=True, min_length=4
-        ),
+        child=serializers.DateTimeField(required=True),
         required=True,
         min_length=1,
     )

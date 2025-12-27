@@ -11,12 +11,7 @@ from api.availability.serializers import (
     EventAvailabilitySerializer,
     EventCodeSerializer,
 )
-from api.availability.utils import (
-    EventGridDimensionError,
-    check_name_available,
-    get_event_grid,
-    get_weekday_date,
-)
+from api.availability.utils import check_name_available, get_timeslots, get_weekday_date
 from api.models import (
     EventDateAvailability,
     EventParticipant,
@@ -42,7 +37,7 @@ class AvailabilityAddThrottle(AnonRateThrottle):
     scope = "availability_add"
 
 
-class AvailabilityInputInvalidError(Exception):
+class InvalidTimeslotError(Exception):
     pass
 
 
@@ -85,17 +80,7 @@ def add_availability(request):
                     status=400,
                 )
 
-            timeslots, num_days, num_times = get_event_grid(user_event)
-
-            if len(availability) != num_days:
-                raise AvailabilityInputInvalidError(
-                    f"Invalid availability days. Expected {num_days}, got {len(availability)}."
-                )
-            for day in availability:
-                if len(day) != num_times:
-                    raise AvailabilityInputInvalidError(
-                        f"Invalid availability timeslots. Expected {num_times}, got {len(day)}."
-                    )
+            timeslots = get_timeslots(user_event)
 
             participant, new = EventParticipant.objects.get_or_create(
                 user_event=user_event,
@@ -107,6 +92,7 @@ def add_availability(request):
                 participant.display_name = display_name
                 participant.save()
 
+            # Remove existing availability
             if user_event.date_type == UserEvent.EventType.SPECIFIC:
                 EventDateAvailability.objects.filter(
                     event_participant=participant
@@ -116,49 +102,53 @@ def add_availability(request):
                     event_participant=participant
                 ).delete()
 
-            # Flatten the availability array to match the timeslots array format
-            flattened_availability = [
-                timeslot for day in availability for timeslot in day
-            ]
-            new_availabilities = []
+            # Add new availability
             if user_event.date_type == UserEvent.EventType.SPECIFIC:
-                for i, timeslot in enumerate(timeslots):
+                timeslot_dict = {t.timeslot: t for t in timeslots}
+                new_availabilities = []
+                for timeslot in availability:
+                    if timeslot not in timeslot_dict:
+                        raise InvalidTimeslotError()
                     new_availabilities.append(
                         EventDateAvailability(
                             event_participant=participant,
-                            event_date_timeslot=timeslot,
-                            is_available=flattened_availability[i],
+                            event_date_timeslot=timeslot_dict[timeslot],
+                            is_available=True,
                         )
                     )
                 EventDateAvailability.objects.bulk_create(new_availabilities)
             elif user_event.date_type == UserEvent.EventType.GENERIC:
-                for i, timeslot in enumerate(timeslots):
+                timeslot_dict = {
+                    get_weekday_date(t.weekday, t.timeslot): t for t in timeslots
+                }
+                new_availabilities = []
+                for timeslot in availability:
+                    if timeslot not in timeslot_dict:
+                        raise InvalidTimeslotError()
                     new_availabilities.append(
                         EventWeekdayAvailability(
                             event_participant=participant,
-                            event_weekday_timeslot=timeslot,
-                            is_available=flattened_availability[i],
+                            event_weekday_timeslot=timeslot_dict[timeslot],
+                            is_available=True,
                         )
                     )
                 EventWeekdayAvailability.objects.bulk_create(new_availabilities)
 
-    except AvailabilityInputInvalidError as e:
-        logger.warning(str(e) + " Event code: " + event_code)
-        return Response(
-            {
-                "error": {
-                    "availability": [str(e)],
-                }
-            },
-            status=400,
-        )
-    except EventGridDimensionError as e:
-        logger.critical(e)
-        return GENERIC_ERR_RESPONSE
     except UserEvent.DoesNotExist:
         return Response(
             {"error": {"event_code": ["Event not found."]}},
             status=404,
+        )
+    except InvalidTimeslotError:
+        return Response(
+            {
+                "error": {
+                    "availability": [
+                        "One or more timeslots are invalid, check if the event has been updated."
+                    ]
+                }
+            },
+            status=400,
         )
     except DatabaseError as e:
         logger.db_error(e)
@@ -327,7 +317,7 @@ def get_all_availability(request):
 
         # Prep the dictionary with empty arrays for the return value
         availability_dict = {}
-        timeslots, _, _ = get_event_grid(event)
+        timeslots = get_timeslots(event)
         if event.date_type == UserEvent.EventType.SPECIFIC:
             for slot in timeslots:
                 availability_dict[slot.timeslot.isoformat()] = []
