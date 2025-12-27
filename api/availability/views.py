@@ -13,6 +13,7 @@ from api.availability.serializers import (
 )
 from api.availability.utils import check_name_available, get_timeslots, get_weekday_date
 from api.models import (
+    AvailabilityStatus,
     EventDateAvailability,
     EventParticipant,
     EventWeekdayAvailability,
@@ -113,7 +114,7 @@ def add_availability(request):
                         EventDateAvailability(
                             event_participant=participant,
                             event_date_timeslot=timeslot_dict[timeslot],
-                            is_available=True,
+                            status=AvailabilityStatus.AVAILABLE,
                         )
                     )
                 EventDateAvailability.objects.bulk_create(new_availabilities)
@@ -129,7 +130,7 @@ def add_availability(request):
                         EventWeekdayAvailability(
                             event_participant=participant,
                             event_weekday_timeslot=timeslot_dict[timeslot],
-                            is_available=True,
+                            status=AvailabilityStatus.AVAILABLE,
                         )
                     )
                 EventWeekdayAvailability.objects.bulk_create(new_availabilities)
@@ -240,18 +241,14 @@ def get_self_availability(request):
 
         if event.date_type == UserEvent.EventType.SPECIFIC:
             availabilities = (
-                EventDateAvailability.objects.filter(
-                    event_participant=participant, is_available=True
-                )
+                EventDateAvailability.objects.filter(event_participant=participant)
                 .select_related("event_date_timeslot")
                 .order_by("event_date_timeslot__timeslot")
             )
             data = [a.event_date_timeslot.timeslot for a in availabilities]
         else:
             availabilities = (
-                EventWeekdayAvailability.objects.filter(
-                    event_participant=participant, is_available=True
-                )
+                EventWeekdayAvailability.objects.filter(event_participant=participant)
                 .select_related("event_weekday_timeslot")
                 .order_by(
                     "event_weekday_timeslot__weekday",
@@ -359,8 +356,7 @@ def get_all_availability(request):
                         f"Timeslot {timeslot} not found in availability dict for event {event_code}"
                     )
                     continue
-                if t.is_available:
-                    availability_dict[timeslot].append(t.event_participant.display_name)
+                availability_dict[timeslot].append(t.event_participant.display_name)
 
             return Response(
                 {
@@ -393,8 +389,7 @@ def get_all_availability(request):
                         f"Timeslot {timeslot} not found in availability dict for event {event_code}"
                     )
                     continue
-                if t.is_available:
-                    availability_dict[timeslot].append(t.event_participant.display_name)
+                availability_dict[timeslot].append(t.event_participant.display_name)
 
             return Response(
                 {

@@ -315,19 +315,6 @@ def edit_date_event(request):
             ).delete()
             EventDateTimeslot.objects.bulk_create(to_add)
 
-            # Add in "unavailable" entries for the new timeslots for current participants
-            to_add_availabilities = []
-            for participant in event.participants.all():
-                for ts in to_add:
-                    to_add_availabilities.append(
-                        EventDateAvailability(
-                            event_participant=participant,
-                            event_date_timeslot=ts,
-                            is_available=False,
-                        )
-                    )
-            EventDateAvailability.objects.bulk_create(to_add_availabilities)
-
     except UserEvent.DoesNotExist:
         return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
@@ -411,19 +398,6 @@ def edit_week_event(request):
                 EventWeekdayTimeslot.objects.filter(query).delete()
 
             EventWeekdayTimeslot.objects.bulk_create(to_add)
-
-            # Add in "unavailable" entries for the new timeslots for current participants
-            to_add_availabilities = []
-            for participant in event.participants.all():
-                for ts in to_add:
-                    to_add_availabilities.append(
-                        EventWeekdayAvailability(
-                            event_participant=participant,
-                            event_weekday_timeslot=ts,
-                            is_available=False,
-                        )
-                    )
-            EventWeekdayAvailability.objects.bulk_create(to_add_availabilities)
 
     except UserEvent.DoesNotExist:
         return EVENT_NOT_FOUND_ERROR
