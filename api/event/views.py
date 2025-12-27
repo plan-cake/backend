@@ -26,14 +26,7 @@ from api.event.utils import (
     validate_date_input,
     validate_weekday_input,
 )
-from api.models import (
-    EventDateAvailability,
-    EventDateTimeslot,
-    EventWeekdayAvailability,
-    EventWeekdayTimeslot,
-    UrlCode,
-    UserEvent,
-)
+from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
 from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
 from api.utils import (
     MessageOutputSerializer,
