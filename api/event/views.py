@@ -7,6 +7,7 @@ from django.db.models import Q
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from api.availability.utils import get_weekday_date
 from api.event.serializers import (
     CustomCodeSerializer,
     DateEventCreateSerializer,
@@ -18,16 +19,15 @@ from api.event.serializers import (
 )
 from api.event.utils import (
     check_custom_code,
-    daterange,
     event_lookup,
-    format_event_info,
     generate_code,
-    timerange,
-    validate_date_input,
-    validate_weekday_input,
+    get_event_type,
+    js_weekday,
+    validate_date_timeslots,
+    validate_weekday_timeslots,
 )
 from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
-from api.settings import GENERIC_ERR_RESPONSE, MAX_EVENT_DAYS
+from api.settings import GENERIC_ERR_RESPONSE
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
@@ -43,6 +43,11 @@ logger = logging.getLogger("api")
 
 EVENT_NOT_FOUND_ERROR = Response(
     {"error": {"general": ["Event not found."]}}, status=404
+)
+
+INVALID_TIMESLOT_TIME_ERROR = Response(
+    {"error": {"timeslots": ["Timeslots must be on 15-minute intervals."]}},
+    status=400,
 )
 
 
@@ -69,15 +74,12 @@ def create_date_event(request):
     user = request.user
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
-    start_date = request.validated_data.get("start_date")
-    end_date = request.validated_data.get("end_date")
-    start_hour = request.validated_data.get("start_hour")
-    end_hour = request.validated_data.get("end_hour")
+    timeslots = request.validated_data.get("timeslots")
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
-    user_date = datetime.now(ZoneInfo(time_zone)).date()
-    errors = validate_date_input(start_date, end_date, start_hour, end_hour, user_date)
+    user_date_local = datetime.now(ZoneInfo(time_zone)).date()
+    errors = validate_date_timeslots(timeslots, user_date_local, time_zone)
     if errors.keys():
         return Response({"error": errors}, status=400)
 
@@ -108,17 +110,13 @@ def create_date_event(request):
             UrlCode.objects.update_or_create(
                 url_code=url_code, defaults={"user_event": new_event}
             )
-            # Create timeslots for the date and time range
-            timeslots = []
-            for date in daterange(start_date, end_date):
-                for time in timerange(start_hour, end_hour):
-                    timeslots.append(
-                        EventDateTimeslot(
-                            user_event=new_event,
-                            timeslot=datetime.combine(date, time),
-                        )
-                    )
-            EventDateTimeslot.objects.bulk_create(timeslots)
+            # Create timeslot objects
+            EventDateTimeslot.objects.bulk_create(
+                [
+                    EventDateTimeslot(user_event=new_event, timeslot=ts)
+                    for ts in timeslots
+                ]
+            )
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -149,15 +147,12 @@ def create_week_event(request):
     user = request.user
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
-    start_weekday = request.validated_data.get("start_weekday")
-    end_weekday = request.validated_data.get("end_weekday")
-    start_hour = request.validated_data.get("start_hour")
-    end_hour = request.validated_data.get("end_hour")
+    timeslots = request.validated_data.get("timeslots")
     time_zone = request.validated_data.get("time_zone")
     custom_code = request.validated_data.get("custom_code")
 
     # Some extra input validation
-    errors = validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour)
+    errors = validate_weekday_timeslots(timeslots)
     if errors.keys():
         return Response({"error": errors}, status=400)
 
@@ -188,18 +183,17 @@ def create_week_event(request):
             UrlCode.objects.update_or_create(
                 url_code=url_code, defaults={"user_event": new_event}
             )
-            # Create timeslots for the date and time range
-            timeslots = []
-            for weekday in range(start_weekday, end_weekday + 1):
-                for time in timerange(start_hour, end_hour):
-                    timeslots.append(
-                        EventWeekdayTimeslot(
-                            user_event=new_event,
-                            weekday=weekday,
-                            timeslot=time,
-                        )
+            # Create timeslot objects
+            EventWeekdayTimeslot.objects.bulk_create(
+                [
+                    EventWeekdayTimeslot(
+                        user_event=new_event,
+                        weekday=js_weekday(ts.weekday()),
+                        timeslot=ts.time(),
                     )
-            EventWeekdayTimeslot.objects.bulk_create(timeslots)
+                    for ts in timeslots
+                ]
+            )
     except DatabaseError as e:
         logger.db_error(e)
         return GENERIC_ERR_RESPONSE
@@ -243,16 +237,13 @@ def edit_date_event(request):
     event_code = request.validated_data.get("event_code")
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
-    start_date = request.validated_data.get("start_date")
-    end_date = request.validated_data.get("end_date")
-    start_hour = request.validated_data.get("start_hour")
-    end_hour = request.validated_data.get("end_hour")
+    timeslots = request.validated_data.get("timeslots")
     time_zone = request.validated_data.get("time_zone")
 
     if not user:
         return EVENT_NOT_FOUND_ERROR
 
-    user_date = datetime.now(ZoneInfo(time_zone)).date()
+    user_date_local = datetime.now(ZoneInfo(time_zone)).date()
     try:
         # Do everything inside a transaction to ensure atomicity
         with transaction.atomic():
@@ -263,20 +254,24 @@ def edit_date_event(request):
                 date_type=UserEvent.EventType.SPECIFIC,
             )
             # Get the earliest timeslot
-            existing_start_date = (
+            existing_start_date: datetime = (
                 EventDateTimeslot.objects.filter(user_event=event)
                 .order_by("timeslot")
                 .first()
-                .timeslot.date()
+                .timeslot
             )
+            # Convert it to local date for comparison
+            existing_start_date = existing_start_date.astimezone(
+                ZoneInfo(event.time_zone)
+            ).date()
 
             # If the start date is after today, it cannot be moved to a date earlier than today.
             # If the start date is before today, it cannot be moved earlier at all.
-            earliest_date = user_date
-            if existing_start_date < user_date:
-                earliest_date = existing_start_date
-            errors = validate_date_input(
-                start_date, end_date, start_hour, end_hour, earliest_date, True
+            earliest_date_local = user_date_local
+            if existing_start_date < user_date_local:
+                earliest_date_local = existing_start_date
+            errors = validate_date_timeslots(
+                timeslots, earliest_date_local, time_zone, True
             )
             if errors.keys():
                 return Response({"error": errors}, status=400)
@@ -293,11 +288,7 @@ def edit_date_event(request):
                     "timeslot", flat=True
                 )
             )
-            edited_timeslots = set(
-                datetime.combine(date, time)
-                for date in daterange(start_date, end_date)
-                for time in timerange(start_hour, end_hour)
-            )
+            edited_timeslots = set(timeslots)
             to_delete = existing_timeslots - edited_timeslots
             to_add = [
                 EventDateTimeslot(user_event=event, timeslot=ts)
@@ -335,10 +326,7 @@ def edit_week_event(request):
     event_code = request.validated_data.get("event_code")
     title = request.validated_data.get("title")
     duration = request.validated_data.get("duration")
-    start_weekday = request.validated_data.get("start_weekday")
-    end_weekday = request.validated_data.get("end_weekday")
-    start_hour = request.validated_data.get("start_hour")
-    end_hour = request.validated_data.get("end_hour")
+    timeslots = request.validated_data.get("timeslots")
     time_zone = request.validated_data.get("time_zone")
 
     if not user:
@@ -354,9 +342,7 @@ def edit_week_event(request):
                 date_type=UserEvent.EventType.GENERIC,
             )
 
-            errors = validate_weekday_input(
-                start_weekday, end_weekday, start_hour, end_hour
-            )
+            errors = validate_weekday_timeslots(timeslots)
             if errors.keys():
                 return Response({"error": errors}, status=400)
 
@@ -372,10 +358,9 @@ def edit_week_event(request):
                     "weekday", "timeslot"
                 )
             )
+            # Matching JavaScript weekday convention
             edited_timeslots = set(
-                (weekday, time)
-                for weekday in range(start_weekday, end_weekday + 1)
-                for time in timerange(start_hour, end_hour)
+                [(js_weekday(ts.weekday()), ts.time()) for ts in timeslots]
             )
             to_delete = existing_timeslots - edited_timeslots
             to_add = [
@@ -421,7 +406,23 @@ def get_event_details(request):
 
     try:
         event = event_lookup(event_code)
-        data = format_event_info(event)
+        data = {
+            "title": event.title,
+            "time_zone": event.time_zone,
+            "event_type": get_event_type(event.date_type),
+        }
+        match event.date_type:
+            case UserEvent.EventType.SPECIFIC:
+                timeslots = event.date_timeslots.all()
+                data["timeslots"] = [ts.timeslot for ts in timeslots]
+            case UserEvent.EventType.GENERIC:
+                timeslots = event.weekday_timeslots.all()
+                data["timeslots"] = [
+                    get_weekday_date(ts.weekday, ts.timeslot) for ts in timeslots
+                ]
+
+        if event.duration:
+            data["duration"] = event.duration
     except UserEvent.DoesNotExist:
         return EVENT_NOT_FOUND_ERROR
     except DatabaseError as e:
