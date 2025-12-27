@@ -5,8 +5,8 @@ from django.db.models import Prefetch, Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
+from api.dashboard.utils import format_event_info
 from api.event.serializers import EventDetailSerializer
-from api.event.utils import format_event_info
 from api.models import (
     EventDateTimeslot,
     EventParticipant,

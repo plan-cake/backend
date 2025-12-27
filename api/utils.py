@@ -12,7 +12,7 @@ from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
-from api.models import UserAccount, UserSession
+from api.models import UserAccount, UserEvent, UserSession
 from api.settings import (
     ACCOUNT_COOKIE_NAME,
     GENERIC_ERR_RESPONSE,
@@ -650,3 +650,11 @@ class TimeZoneField(serializers.CharField):
         except ZoneInfoNotFoundError:
             raise serializers.ValidationError("Invalid time zone.")
         return value
+
+
+def get_event_type(date_type):
+    match date_type:
+        case UserEvent.EventType.SPECIFIC:
+            return "Date"
+        case UserEvent.EventType.GENERIC:
+            return "Week"
