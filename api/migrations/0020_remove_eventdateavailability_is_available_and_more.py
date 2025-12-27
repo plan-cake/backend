@@ -33,7 +33,7 @@ class Migration(migrations.Migration):
             model_name="eventdateavailability",
             name="status",
             field=models.CharField(
-                choices=[("AVAILABLE", "Available")], default="Available", max_length=20
+                choices=[("AVAILABLE", "Available")], default="AVAILABLE", max_length=20
             ),
             preserve_default=False,
         ),
@@ -41,7 +41,7 @@ class Migration(migrations.Migration):
             model_name="eventweekdayavailability",
             name="status",
             field=models.CharField(
-                choices=[("AVAILABLE", "Available")], default="Available", max_length=20
+                choices=[("AVAILABLE", "Available")], default="AVAILABLE", max_length=20
             ),
             preserve_default=False,
         ),
