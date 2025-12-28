@@ -34,6 +34,8 @@ def get_readable_field_name(field_name):
             return "boolean"
         case "DateField":
             return "date"
+        case "TimeField":
+            return "time"
         case "DateTimeField":
             return "datetime"
         case "EmailField":
