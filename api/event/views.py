@@ -254,12 +254,19 @@ def edit_date_event(request):
                 date_type=UserEvent.EventType.SPECIFIC,
             )
             # Get the earliest timeslot
-            existing_start_date: datetime = (
+            earliest_timeslot = (
                 EventDateTimeslot.objects.filter(user_event=event)
                 .order_by("timeslot")
                 .first()
-                .timeslot
             )
+            existing_start_date: datetime = None
+            if earliest_timeslot:
+                existing_start_date = earliest_timeslot.timeslot
+            else:
+                logger.critical(
+                    f"Event {event.id} has no timeslots when editing date event."
+                )
+                return GENERIC_ERR_RESPONSE
             # Convert it to local date for comparison
             existing_start_date = existing_start_date.astimezone(
                 ZoneInfo(event.time_zone)
