@@ -1,9 +1,12 @@
+import logging
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from api.availability.utils import get_weekday_date
 from api.models import UserEvent
 from api.utils import get_event_type
+
+logger = logging.getLogger("api")
 
 
 def format_event_info(event: UserEvent, user_time_zone: ZoneInfo):
@@ -28,6 +31,12 @@ def format_event_info(event: UserEvent, user_time_zone: ZoneInfo):
                 get_weekday_date(ts.weekday, ts.timeslot).astimezone(event_time_zone)
                 for ts in event.weekday_timeslots.all()
             ]
+
+    if not all_timeslots:
+        logger.critical(
+            f"Event {event.id} has no timeslots when formatting for dashboard."
+        )
+        raise ValueError("Event has no timeslots.")
 
     # Earliest weekday is also sorted by date
     start_date = min(ts.date() for ts in all_timeslots)
