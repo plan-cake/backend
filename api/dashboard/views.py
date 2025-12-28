@@ -1,4 +1,5 @@
 import logging
+from zoneinfo import ZoneInfo
 
 from django.db import DatabaseError
 from django.db.models import Prefetch, Q
@@ -6,7 +7,6 @@ from rest_framework import serializers
 from rest_framework.response import Response
 
 from api.dashboard.utils import format_event_info
-from api.event.serializers import EventDetailSerializer
 from api.models import (
     EventDateTimeslot,
     EventParticipant,
@@ -14,12 +14,28 @@ from api.models import (
     UserEvent,
 )
 from api.settings import GENERIC_ERR_RESPONSE
-from api.utils import api_endpoint, check_auth, validate_output
+from api.utils import (
+    TimeZoneField,
+    api_endpoint,
+    check_auth,
+    validate_output,
+    validate_query_param_input,
+)
 
 logger = logging.getLogger("api")
 
 
-class DashboardEventSerializer(EventDetailSerializer):
+class TimeZoneSerializer(serializers.Serializer):
+    time_zone = TimeZoneField(required=True)
+
+
+class DashboardEventSerializer(TimeZoneSerializer):
+    title = serializers.CharField(required=True, max_length=255)
+    event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    start_time = serializers.TimeField(required=True)
+    end_time = serializers.TimeField(required=True)
     event_code = serializers.CharField(required=True, max_length=255)
 
 
@@ -34,17 +50,22 @@ class DashboardSerializer(serializers.Serializer):
 
 @api_endpoint("GET")
 @check_auth
+@validate_query_param_input(TimeZoneSerializer)
 @validate_output(DashboardSerializer)
 def get_dashboard(request):
     """
     Returns dashboard data for the current user. This includes events that the user
     created and ones that the user participated in.
 
+    The user's time zone is needed as a query parameter to display dates and times
+    correctly. This means that the returned times are LOCAL, not in UTC.
+
     The events are sorted by their creation date.
 
     Events that no longer have a URL code from inactivity will not be included.
     """
     user = request.user
+    time_zone = request.validated_data.get("time_zone")
 
     if not user:
         return Response(
@@ -98,11 +119,13 @@ def get_dashboard(request):
 
         my_events = []
         for event in created_events:
-            my_events.append(format_event_info(event))
+            my_events.append(format_event_info(event, ZoneInfo(time_zone)))
             my_events[-1]["event_code"] = event.url_code.url_code
         their_events = []
         for event in participations:
-            their_events.append(format_event_info(event.user_event))
+            their_events.append(
+                format_event_info(event.user_event, ZoneInfo(time_zone))
+            )
             if event.user_event.url_code is not None:
                 their_events[-1]["event_code"] = event.user_event.url_code.url_code
 
