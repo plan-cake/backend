@@ -358,7 +358,6 @@ def edit_week_event(request):
                     "weekday", "timeslot"
                 )
             )
-            # Matching JavaScript weekday convention
             edited_timeslots = set(
                 [(js_weekday(ts.weekday()), ts.time()) for ts in timeslots]
             )
