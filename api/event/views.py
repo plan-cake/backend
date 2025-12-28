@@ -184,14 +184,17 @@ def create_week_event(request):
                 url_code=url_code, defaults={"user_event": new_event}
             )
             # Create timeslot objects
+            deduplicated_timeslots = set(
+                (js_weekday(ts.weekday()), ts.time()) for ts in timeslots
+            )
             EventWeekdayTimeslot.objects.bulk_create(
                 [
                     EventWeekdayTimeslot(
                         user_event=new_event,
-                        weekday=js_weekday(ts.weekday()),
-                        timeslot=ts.time(),
+                        weekday=weekday,
+                        timeslot=time,
                     )
-                    for ts in set(timeslots)
+                    for (weekday, time) in deduplicated_timeslots
                 ]
             )
     except DatabaseError as e:
