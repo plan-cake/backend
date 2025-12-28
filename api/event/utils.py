@@ -89,18 +89,24 @@ def validate_date_timeslots(
     start_date_local = min(timeslots).astimezone(ZoneInfo(user_time_zone)).date()
 
     errors = {}
+
+    def add_error(message):
+        if "timeslots" not in errors:
+            errors["timeslots"] = []
+        errors["timeslots"].append(message)
+
     if start_date_local < earliest_date_local:
         if editing:
-            errors["timeslots"] = [
+            add_error(
                 "Event cannot start earlier than today, or be moved earlier if already before today."
-            ]
+            )
         else:
-            errors["timeslots"] = ["Event must start today or in the future."]
+            add_error("Event must start today or in the future.")
     if (end_date - start_date).days > MAX_EVENT_DAYS:
-        errors["timeslots"] = [f"Max event length is {MAX_EVENT_DAYS} days."]
+        add_error(f"Max event length is {MAX_EVENT_DAYS} days.")
 
     if not check_timeslot_times(timeslots):
-        errors["timeslots"] = ["Timeslots must be on 15-minute intervals."]
+        add_error("Timeslots must be on 15-minute intervals.")
 
     return errors
 
