@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 from api.availability.utils import get_weekday_date
-from api.event.utils import js_weekday
 from api.models import UserEvent
 from api.utils import get_event_type
 
