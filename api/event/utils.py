@@ -95,6 +95,8 @@ def validate_date_timeslots(
             errors["timeslots"] = []
         errors["timeslots"].append(message)
 
+    # The earliest date allowed is "today" in the user's local time zone, which is why
+    # this uses a time zone conversion instead of UTC
     if start_date_local < earliest_date_local:
         if editing:
             add_error(
