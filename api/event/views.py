@@ -114,7 +114,7 @@ def create_date_event(request):
             EventDateTimeslot.objects.bulk_create(
                 [
                     EventDateTimeslot(user_event=new_event, timeslot=ts)
-                    for ts in timeslots
+                    for ts in set(timeslots)
                 ]
             )
     except DatabaseError as e:
@@ -191,7 +191,7 @@ def create_week_event(request):
                         weekday=js_weekday(ts.weekday()),
                         timeslot=ts.time(),
                     )
-                    for ts in timeslots
+                    for ts in set(timeslots)
                 ]
             )
     except DatabaseError as e:
