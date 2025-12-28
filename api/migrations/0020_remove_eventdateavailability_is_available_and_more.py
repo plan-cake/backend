@@ -19,7 +19,8 @@ class Migration(migrations.Migration):
                 apps.get_model("api", "EventWeekdayAvailability")
                 .objects.filter(is_available=False)
                 .delete(),
-            )
+            ),
+            reverse_code=None,
         ),
         migrations.RemoveField(
             model_name="eventdateavailability",
