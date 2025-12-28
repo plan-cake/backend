@@ -67,7 +67,11 @@ def generate_code():
 
 def check_timeslot_times(timeslots):
     for timeslot in timeslots:
-        if timeslot.minute % 15 != 0:
+        if (
+            timeslot.minute % 15 != 0
+            or timeslot.second != 0
+            or timeslot.microsecond != 0
+        ):
             return False
     return True
 
