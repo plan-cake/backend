@@ -395,12 +395,9 @@ def edit_week_event(request):
 @validate_output(EventDetailSerializer)
 def get_event_details(request):
     """
-    Gets details about an event like title, duration, and date/time range.
+    Gets details about an event like title, duration, and timeslots.
 
     This is useful for both displaying an event, and preparing for event editing.
-
-    start_date, end_date, start_weekday, and end_weekday will only have values for their
-    corresponding event types.
     """
     event_code = request.validated_data.get("event_code")
 
