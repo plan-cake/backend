@@ -67,7 +67,7 @@ def format_event_info(event: UserEvent, user_time_zone: ZoneInfo):
         "end_date": end_datetime.date(),
         "start_time": start_datetime.time(),
         "end_time": end_datetime.time(),
-        "event_code": event.url_code.url_code,
+        "event_code": event.url_code.url_code if event.url_code else None,
         "time_zone": event.time_zone,
     }
     # Add extra fields only if not null, otherwise the serializer complains
