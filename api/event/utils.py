@@ -87,6 +87,9 @@ def validate_date_timeslots(
 
     The editing parameter determines the error message given if start_date is too early.
     """
+    if not timeslots:
+        return {"timeslots": ["At least one timeslot is required."]}
+
     start_date = min(ts.date() for ts in timeslots)
     end_date = max(ts.date() for ts in timeslots)
 
@@ -118,6 +121,9 @@ def validate_date_timeslots(
 
 
 def validate_weekday_timeslots(timeslots):
+    if not timeslots:
+        return {"timeslots": ["At least one timeslot is required."]}
+
     if not check_timeslot_times(timeslots):
         return {"timeslots": ["Timeslots must be on 15-minute intervals."]}
     return {}
