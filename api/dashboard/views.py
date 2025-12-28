@@ -126,8 +126,7 @@ def get_dashboard(request):
             their_events.append(
                 format_event_info(event.user_event, ZoneInfo(time_zone))
             )
-            if event.user_event.url_code is not None:
-                their_events[-1]["event_code"] = event.user_event.url_code.url_code
+            their_events[-1]["event_code"] = event.user_event.url_code.url_code
 
     except DatabaseError as e:
         logger.db_error(e)
