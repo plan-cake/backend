@@ -51,3 +51,7 @@ class WeekEventEditSerializer(EventInfoSerializer, EventCodeSerializer):
 
 class EventDetailSerializer(EventInfoSerializer):
     event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    start_time = serializers.TimeField(required=True)
+    end_time = serializers.TimeField(required=True)

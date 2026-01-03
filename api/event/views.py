@@ -31,7 +31,7 @@ from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
     check_auth,
-    get_event_type,
+    format_event_info,
     rate_limit,
     require_auth,
     validate_json_input,
@@ -412,11 +412,7 @@ def get_event_details(request):
 
     try:
         event = event_lookup(event_code)
-        data = {
-            "title": event.title,
-            "time_zone": event.time_zone,
-            "event_type": get_event_type(event.date_type),
-        }
+        data = format_event_info(event)
         match event.date_type:
             case UserEvent.EventType.SPECIFIC:
                 timeslots = event.date_timeslots.all()
