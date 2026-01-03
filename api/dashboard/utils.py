@@ -9,7 +9,7 @@ from api.utils import get_event_type
 logger = logging.getLogger("api")
 
 
-def format_event_info(event: UserEvent, user_time_zone: ZoneInfo):
+def format_event_info(event: UserEvent):
     """
     Formats event info into a dictionary for the dashboard get endpoint.
 
@@ -46,18 +46,18 @@ def format_event_info(event: UserEvent, user_time_zone: ZoneInfo):
     # End time should be 15 minutes after the last timeslot
     end_time = (datetime.combine(datetime.min, end_time) + timedelta(minutes=15)).time()
 
-    # Then convert back to the user's local time zone for display
+    # Then convert back to UTC for the frontend to use
     # datetime.combine has no time zone info, so we include the event's time zone to
     # make sure it doesn't convert twice
     start_datetime = (
         datetime.combine(start_date, start_time)
         .replace(tzinfo=event_time_zone)
-        .astimezone(user_time_zone)
+        .astimezone(ZoneInfo("UTC"))
     )
     end_datetime = (
         datetime.combine(end_date, end_time)
         .replace(tzinfo=event_time_zone)
-        .astimezone(user_time_zone)
+        .astimezone(ZoneInfo("UTC"))
     )
 
     data = {
