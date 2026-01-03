@@ -742,7 +742,7 @@ def format_event_info(event: UserEvent) -> dict:
     """
     bounds = get_event_bounds(event)
 
-    return {
+    data = {
         "title": event.title,
         "event_type": get_event_type(event.date_type),
         "start_date": bounds.start_date,
@@ -752,3 +752,8 @@ def format_event_info(event: UserEvent) -> dict:
         "time_zone": event.time_zone,
         "event_code": event.url_code.url_code if event.url_code else None,
     }
+
+    if event.duration is not None:
+        data["duration"] = event.duration
+
+    return data

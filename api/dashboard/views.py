@@ -27,6 +27,7 @@ logger = logging.getLogger("api")
 class DashboardEventSerializer(serializers.Serializer):
     title = serializers.CharField(required=True, max_length=255)
     event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
+    duration = serializers.IntegerField(required=False)
     start_date = serializers.DateField(required=True)
     end_date = serializers.DateField(required=True)
     start_time = serializers.TimeField(required=True)
