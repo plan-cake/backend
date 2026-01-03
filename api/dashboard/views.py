@@ -6,7 +6,6 @@ from django.db.models import Prefetch, Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
-from api.dashboard.utils import format_event_info
 from api.models import (
     EventDateTimeslot,
     EventParticipant,
@@ -18,8 +17,8 @@ from api.utils import (
     TimeZoneField,
     api_endpoint,
     check_auth,
+    format_event_info,
     validate_output,
-    validate_query_param_input,
 )
 
 logger = logging.getLogger("api")
@@ -112,11 +111,9 @@ def get_dashboard(request):
         my_events = []
         for event in created_events:
             my_events.append(format_event_info(event))
-            my_events[-1]["event_code"] = event.url_code.url_code
         their_events = []
         for event in participations:
             their_events.append(format_event_info(event.user_event))
-            their_events[-1]["event_code"] = event.user_event.url_code.url_code
 
     except DatabaseError as e:
         logger.db_error(e)

@@ -12,6 +12,7 @@ from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
+from api.availability.utils import get_weekday_date
 from api.models import UserAccount, UserEvent, UserSession
 from api.settings import (
     ACCOUNT_COOKIE_NAME,
@@ -658,3 +659,96 @@ def get_event_type(date_type):
             return "Date"
         case UserEvent.EventType.GENERIC:
             return "Week"
+
+
+class EventBounds:
+    def __init__(
+        self,
+        start_date: datetime.date,
+        end_date: datetime.date,
+        start_time: datetime.time,
+        end_time: datetime.time,
+    ):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.start_time = start_time
+        self.end_time = end_time
+
+
+def get_event_bounds(event: UserEvent) -> EventBounds:
+    """
+    Finds the start and end date/time bounds for an event.
+
+    For query efficiency, the event's timeslots should be prefetched.
+    """
+    all_timeslots: list[datetime] = []
+    event_time_zone = ZoneInfo(event.time_zone)
+
+    event_type = get_event_type(event.date_type)
+    # Sort the timeslots by the EVENT'S time zone to get the min/max of the creator
+    match event.date_type:
+        case UserEvent.EventType.SPECIFIC:
+            all_timeslots = [
+                ts.timeslot.astimezone(event_time_zone)
+                for ts in event.date_timeslots.all()
+            ]
+        case UserEvent.EventType.GENERIC:
+            all_timeslots = [
+                get_weekday_date(ts.weekday, ts.timeslot).astimezone(event_time_zone)
+                for ts in event.weekday_timeslots.all()
+            ]
+
+    if not all_timeslots:
+        logger.critical(
+            f"Event {event.id} has no timeslots when formatting for dashboard."
+        )
+        raise ValueError("Event has no timeslots.")
+
+    # Earliest weekday is also sorted by date
+    start_date = min(ts.date() for ts in all_timeslots)
+    end_date = max(ts.date() for ts in all_timeslots)
+    start_time = min(ts.time() for ts in all_timeslots)
+    end_time = max(ts.time() for ts in all_timeslots)
+    # End time should be 15 minutes after the last timeslot
+    end_time = (datetime.combine(datetime.min, end_time) + timedelta(minutes=15)).time()
+
+    # Then convert back to UTC for the frontend to use
+    # datetime.combine has no time zone info, so we include the event's time zone to
+    # make sure it doesn't convert twice
+    start_datetime = (
+        datetime.combine(start_date, start_time)
+        .replace(tzinfo=event_time_zone)
+        .astimezone(ZoneInfo("UTC"))
+    )
+    end_datetime = (
+        datetime.combine(end_date, end_time)
+        .replace(tzinfo=event_time_zone)
+        .astimezone(ZoneInfo("UTC"))
+    )
+
+    return EventBounds(
+        start_date=start_datetime.date(),
+        end_date=end_datetime.date(),
+        start_time=start_datetime.time(),
+        end_time=end_datetime.time(),
+    )
+
+
+def format_event_info(event: UserEvent) -> dict:
+    """
+    Formats event information.
+
+    For query efficiency, the event's timeslots should be prefetched.
+    """
+    bounds = get_event_bounds(event)
+
+    return {
+        "title": event.title,
+        "event_type": get_event_type(event.date_type),
+        "start_date": bounds.start_date,
+        "end_date": bounds.end_date,
+        "start_time": bounds.start_time,
+        "end_time": bounds.end_time,
+        "time_zone": event.time_zone,
+        "event_code": event.url_code.url_code if event.url_code else None,
+    }
