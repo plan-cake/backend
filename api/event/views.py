@@ -400,6 +400,7 @@ def edit_week_event(request):
 
 
 @api_endpoint("GET")
+@check_auth
 @validate_query_param_input(EventCodeSerializer)
 @validate_output(EventDetailSerializer)
 def get_event_details(request):
@@ -408,6 +409,7 @@ def get_event_details(request):
 
     This is useful for both displaying an event, and preparing for event editing.
     """
+    user = request.user
     event_code = request.validated_data.get("event_code")
 
     try:
@@ -435,6 +437,9 @@ def get_event_details(request):
         return GENERIC_ERR_RESPONSE
 
     return Response(
-        data,
+        {
+            **data,
+            "is_creator": event.user_account == user,
+        },
         status=200,
     )
