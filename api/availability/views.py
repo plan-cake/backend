@@ -309,7 +309,6 @@ def get_all_availability(request):
 
     try:
         event = UserEvent.objects.get(url_code=event_code)
-        is_creator = event.user_account == user
         participants = event.participants.all()
 
         # Prep the dictionary with empty arrays for the return value
@@ -327,7 +326,6 @@ def get_all_availability(request):
         if not len(participants):
             return Response(
                 {
-                    "is_creator": is_creator,
                     "user_display_name": user_display_name,
                     "participants": [],
                     "availability": availability_dict,
@@ -360,7 +358,6 @@ def get_all_availability(request):
 
             return Response(
                 {
-                    "is_creator": is_creator,
                     "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,
@@ -393,7 +390,6 @@ def get_all_availability(request):
 
             return Response(
                 {
-                    "is_creator": is_creator,
                     "user_display_name": user_display_name,
                     "participants": [p.display_name for p in participants],
                     "availability": availability_dict,

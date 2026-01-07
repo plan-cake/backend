@@ -37,7 +37,6 @@ class AvailableDatesSerializer(DisplayNameSerializer):
 
 
 class EventAvailabilitySerializer(serializers.Serializer):
-    is_creator = serializers.BooleanField(required=True)
     user_display_name = serializers.CharField(
         allow_null=True, max_length=25, required=True
     )
