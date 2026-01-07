@@ -12,6 +12,11 @@ class DateTimeNoTZField(models.DateTimeField):
         return super().db_type(connection)
 
 
+# Enum for availability status
+class AvailabilityStatus(models.TextChoices):
+    AVAILABLE = "AVAILABLE", "Available"
+
+
 class UserAccount(models.Model):
     user_account_id = models.AutoField(primary_key=True)
     email = models.EmailField(unique=True, null=True)
@@ -162,7 +167,10 @@ class EventWeekdayAvailability(models.Model):
         on_delete=models.CASCADE,
         related_name="participant_availabilities",
     )
-    is_available = models.BooleanField()
+    status = models.CharField(
+        max_length=20,
+        choices=AvailabilityStatus.choices,
+    )
 
     class Meta:
         constraints = [
@@ -186,7 +194,10 @@ class EventDateAvailability(models.Model):
         on_delete=models.CASCADE,
         related_name="participant_availabilities",
     )
-    is_available = models.BooleanField()
+    status = models.CharField(
+        max_length=20,
+        choices=AvailabilityStatus.choices,
+    )
 
     class Meta:
         constraints = [

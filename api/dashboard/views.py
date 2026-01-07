@@ -1,12 +1,11 @@
 import logging
+from zoneinfo import ZoneInfo
 
 from django.db import DatabaseError
 from django.db.models import Prefetch, Q
 from rest_framework import serializers
 from rest_framework.response import Response
 
-from api.event.serializers import EventDetailSerializer
-from api.event.utils import format_event_info
 from api.models import (
     EventDateTimeslot,
     EventParticipant,
@@ -14,12 +13,26 @@ from api.models import (
     UserEvent,
 )
 from api.settings import GENERIC_ERR_RESPONSE
-from api.utils import api_endpoint, check_auth, validate_output
+from api.utils import (
+    TimeZoneField,
+    api_endpoint,
+    check_auth,
+    format_event_info,
+    validate_output,
+)
 
 logger = logging.getLogger("api")
 
 
-class DashboardEventSerializer(EventDetailSerializer):
+class DashboardEventSerializer(serializers.Serializer):
+    title = serializers.CharField(required=True, max_length=255)
+    event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
+    duration = serializers.IntegerField(required=False)
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    start_time = serializers.TimeField(required=True)
+    end_time = serializers.TimeField(required=True)
+    time_zone = TimeZoneField(required=True)
     event_code = serializers.CharField(required=True, max_length=255)
 
 
@@ -99,12 +112,9 @@ def get_dashboard(request):
         my_events = []
         for event in created_events:
             my_events.append(format_event_info(event))
-            my_events[-1]["event_code"] = event.url_code.url_code
         their_events = []
         for event in participations:
             their_events.append(format_event_info(event.user_event))
-            if event.user_event.url_code is not None:
-                their_events[-1]["event_code"] = event.user_event.url_code.url_code
 
     except DatabaseError as e:
         logger.db_error(e)

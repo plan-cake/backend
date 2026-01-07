@@ -15,8 +15,9 @@ class EventCodeSerializer(serializers.Serializer):
 class EventInfoSerializer(serializers.Serializer):
     title = serializers.CharField(required=True, max_length=50)
     duration = serializers.IntegerField(required=False)
-    start_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
-    end_hour = serializers.IntegerField(required=True, min_value=0, max_value=24)
+    timeslots = serializers.ListField(
+        child=serializers.DateTimeField(), required=True, allow_empty=False
+    )
     time_zone = TimeZoneField(required=True)
 
     def validate(self, attrs):
@@ -32,35 +33,25 @@ class EventInfoSerializer(serializers.Serializer):
         return super().validate(attrs)
 
 
-class DateEventInfoSerializer(EventInfoSerializer):
-    start_date = serializers.DateField(required=True)
-    end_date = serializers.DateField(required=True)
-
-
-class WeekEventInfoSerializer(EventInfoSerializer):
-    start_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-    end_weekday = serializers.IntegerField(required=True, min_value=0, max_value=6)
-
-
-class DateEventCreateSerializer(DateEventInfoSerializer, CustomCodeSerializer):
+class DateEventCreateSerializer(EventInfoSerializer, CustomCodeSerializer):
     pass
 
 
-class WeekEventCreateSerializer(WeekEventInfoSerializer, CustomCodeSerializer):
+class WeekEventCreateSerializer(EventInfoSerializer, CustomCodeSerializer):
     pass
 
 
-class DateEventEditSerializer(DateEventInfoSerializer, EventCodeSerializer):
+class DateEventEditSerializer(EventInfoSerializer, EventCodeSerializer):
     pass
 
 
-class WeekEventEditSerializer(WeekEventInfoSerializer, EventCodeSerializer):
+class WeekEventEditSerializer(EventInfoSerializer, EventCodeSerializer):
     pass
 
 
 class EventDetailSerializer(EventInfoSerializer):
     event_type = serializers.ChoiceField(required=True, choices=["Date", "Week"])
-    start_date = serializers.DateField(required=False)
-    end_date = serializers.DateField(required=False)
-    start_weekday = serializers.IntegerField(required=False, min_value=0, max_value=6)
-    end_weekday = serializers.IntegerField(required=False, min_value=0, max_value=6)
+    start_date = serializers.DateField(required=True)
+    end_date = serializers.DateField(required=True)
+    start_time = serializers.TimeField(required=True)
+    end_time = serializers.TimeField(required=True)

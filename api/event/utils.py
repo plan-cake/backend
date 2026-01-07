@@ -2,6 +2,7 @@ import random
 import re
 import string
 from datetime import datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from django.db.models import Prefetch
 
@@ -64,68 +65,68 @@ def generate_code():
     raise Exception("Failed to generate a unique URL code.")
 
 
-def daterange(start_date, end_date):
-    current = start_date
-    while current <= end_date:
-        yield current
-        current += timedelta(days=1)
+def check_timeslot_times(timeslots):
+    for timeslot in timeslots:
+        if (
+            timeslot.minute % 15 != 0
+            or timeslot.second != 0
+            or timeslot.microsecond != 0
+        ):
+            return False
+    return True
 
 
-def timerange(start_hour, end_hour):
-    start_time = time(start_hour)
-    end_time = time(end_hour) if end_hour != 24 else time(23, 59)
-    # Adding the date is a workaround since you can't use timedelta with just times
-    date = datetime.today()
-    current = datetime.combine(date, start_time)
-    end_dt = datetime.combine(date, end_time)
-    while current < end_dt:
-        yield current.time()
-        current += timedelta(minutes=15)
-
-
-def validate_date_input(
-    start_date, end_date, start_hour, end_hour, earliest_date, editing=False
+def validate_date_timeslots(
+    timeslots: list[datetime],
+    earliest_date_local: datetime.date,
+    user_time_zone: str,
+    editing: bool = False,
 ):
     """
-    Validates date and time ranges for an event.
+    Validates timeslots for a date event.
 
     The editing parameter determines the error message given if start_date is too early.
     """
+    if not timeslots:
+        return {"timeslots": ["At least one timeslot is required."]}
+
+    start_date = min(ts.date() for ts in timeslots)
+    end_date = max(ts.date() for ts in timeslots)
+
+    start_date_local = min(timeslots).astimezone(ZoneInfo(user_time_zone)).date()
+
     errors = {}
-    if start_date < earliest_date:
+
+    def add_error(message):
+        if "timeslots" not in errors:
+            errors["timeslots"] = []
+        errors["timeslots"].append(message)
+
+    # The earliest date allowed is "today" in the user's local time zone, which is why
+    # this uses a time zone conversion instead of UTC
+    if start_date_local < earliest_date_local:
         if editing:
-            errors["start_date"] = [
-                "Start date cannot be set earlier than today, or moved earlier if already before today."
-            ]
+            add_error(
+                "Event cannot start earlier than today, or be moved earlier if already before today."
+            )
         else:
-            errors["start_date"] = ["Start date must be today or in the future."]
-    if start_date > end_date:
-        errors["end_date"] = ["End date must be on or after start date."]
-    if start_hour >= end_hour:
-        errors["end_hour"] = ["End hour must be after start hour."]
+            add_error("Event must start today or in the future.")
     if (end_date - start_date).days > MAX_EVENT_DAYS:
-        errors["end_date"] = [
-            f"End date must be within {MAX_EVENT_DAYS} days of start date."
-        ]
+        add_error(f"Max event length is {MAX_EVENT_DAYS} days.")
+
+    if not check_timeslot_times(timeslots):
+        add_error("Timeslots must be on 15-minute intervals.")
 
     return errors
 
 
-def validate_weekday_input(start_weekday, end_weekday, start_hour, end_hour):
-    errors = {}
-    if start_weekday > end_weekday:
-        errors["end_weekday"] = ["End weekday must be on or after start weekday."]
-    if start_hour >= end_hour:
-        errors["end_hour"] = ["End hour must be after start hour."]
-    return errors
+def validate_weekday_timeslots(timeslots):
+    if not timeslots:
+        return {"timeslots": ["At least one timeslot is required."]}
 
-
-def get_event_type(date_type):
-    match date_type:
-        case UserEvent.EventType.SPECIFIC:
-            return "Date"
-        case UserEvent.EventType.GENERIC:
-            return "Week"
+    if not check_timeslot_times(timeslots):
+        return {"timeslots": ["Timeslots must be on 15-minute intervals."]}
+    return {}
 
 
 def event_lookup(event_code: str):
@@ -145,61 +146,8 @@ def event_lookup(event_code: str):
     ).get(url_code=event_code)
 
 
-def format_event_info(
-    event: UserEvent,
-):
+def js_weekday(weekday: int) -> int:
     """
-    Formats event info into a dictionary to satisfy the output serializers on certain
-    endpoints.
-
-    For query efficiency, the event's timeslots should be prefetched.
+    Converts a Python weekday (0 = Monday) to a JavaScript weekday (0 = Sunday).
     """
-    start_date = None
-    end_date = None
-    start_weekday = None
-    end_weekday = None
-    event_type = ""
-    start_hour = -1
-    end_hour = -1
-
-    event_type = get_event_type(event.date_type)
-    first_timeslot = None
-    last_timeslot = None
-    match event_type:
-        case "Date":
-            all_timeslots = list(event.date_timeslots.all())
-            first_timeslot = all_timeslots[0]
-            last_timeslot = all_timeslots[-1]
-            start_date = first_timeslot.timeslot.date()
-            end_date = last_timeslot.timeslot.date()
-        case "Week":
-            all_timeslots = list(event.weekday_timeslots.all())
-            first_timeslot = all_timeslots[0]
-            last_timeslot = all_timeslots[-1]
-            start_weekday = first_timeslot.weekday
-            end_weekday = last_timeslot.weekday
-
-    start_hour = first_timeslot.timeslot.hour
-    # The last timeslot will always be XX:45, so just add 1 to the hour
-    end_hour = last_timeslot.timeslot.hour + 1
-
-    data = {
-        "title": event.title,
-        "event_type": event_type,
-        "start_hour": start_hour,
-        "end_hour": end_hour,
-        "time_zone": event.time_zone,
-    }
-    # Add the extra fields only if not null, otherwise the serializer complains
-    if event.duration:
-        data["duration"] = event.duration
-    if start_date:
-        data["start_date"] = start_date
-    if end_date:
-        data["end_date"] = end_date
-    if start_weekday is not None:
-        data["start_weekday"] = start_weekday
-    if end_weekday is not None:
-        data["end_weekday"] = end_weekday
-
-    return data
+    return (weekday + 1) % 7
