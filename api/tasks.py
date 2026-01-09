@@ -6,7 +6,6 @@ from django.db.models import Q
 from api.models import (
     PasswordResetToken,
     UnverifiedUserAccount,
-    UrlCode,
     UserAccount,
     UserSession,
 )
@@ -15,7 +14,6 @@ from api.settings import (
     LONG_SESS_EXP_SECONDS,
     PWD_RESET_EXP_SECONDS,
     SESS_EXP_SECONDS,
-    URL_CODE_EXP_SECONDS,
 )
 
 
@@ -63,15 +61,6 @@ def password_reset_token_cleanup():
     ).delete()
 
 
-def url_code_cleanup():
-    """
-    Removes expired event URL codes.
-    """
-    UrlCode.objects.filter(
-        last_used__lt=datetime.now() - timedelta(seconds=URL_CODE_EXP_SECONDS)
-    ).delete()
-
-
 @shared_task
 def daily_duties():
     """
@@ -82,4 +71,3 @@ def daily_duties():
     guest_cleanup()
     unverified_user_cleanup()
     password_reset_token_cleanup()
-    url_code_cleanup()
