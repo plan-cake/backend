@@ -7,21 +7,13 @@ from zoneinfo import ZoneInfo
 from django.db.models import Prefetch
 
 from api.models import EventDateTimeslot, EventWeekdayTimeslot, UrlCode, UserEvent
-from api.settings import (
-    MAX_EVENT_DAYS,
-    RAND_URL_CODE_ATTEMPTS,
-    RAND_URL_CODE_LENGTH,
-    URL_CODE_EXP_SECONDS,
-)
+from api.settings import MAX_EVENT_DAYS, RAND_URL_CODE_ATTEMPTS, RAND_URL_CODE_LENGTH
 
 
 def check_code_available(code):
     try:
-        existing_code = UrlCode.objects.get(url_code=code)
-        if existing_code.last_used >= datetime.now() - timedelta(
-            seconds=URL_CODE_EXP_SECONDS
-        ):
-            return False
+        UrlCode.objects.get(url_code=code)
+        return False
     except UrlCode.DoesNotExist:
         pass
 
