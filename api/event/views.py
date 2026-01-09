@@ -106,10 +106,7 @@ def create_date_event(request):
                 duration=duration,
                 time_zone=time_zone,
             )
-            # Here we trust the code checking logic from before instead of checking again
-            UrlCode.objects.update_or_create(
-                url_code=url_code, defaults={"user_event": new_event}
-            )
+            UrlCode.objects.create(url_code=url_code, user_event=new_event)
             # Create timeslot objects
             EventDateTimeslot.objects.bulk_create(
                 [
@@ -179,10 +176,7 @@ def create_week_event(request):
                 duration=duration,
                 time_zone=time_zone,
             )
-            # Here we trust the code checking logic from before instead of checking again
-            UrlCode.objects.update_or_create(
-                url_code=url_code, defaults={"user_event": new_event}
-            )
+            UrlCode.objects.create(url_code=url_code, user_event=new_event)
             # Create timeslot objects
             deduplicated_timeslots = set(
                 (js_weekday(ts.weekday()), ts.time()) for ts in timeslots
