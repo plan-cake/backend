@@ -43,6 +43,7 @@ def check_custom_code(code):
         "reset-password",
         "register",
         "verify-email",
+        "version-history",
     ]
     if code in RESERVED_KEYWORDS or not check_code_available(code):
         return "Code unavailable."
