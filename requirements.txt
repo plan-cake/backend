@@ -20,6 +20,7 @@ kombu==5.5.4
 packaging==25.0
 prompt_toolkit==3.0.51
 psycopg==3.2.7
+psycopg2-binary==2.9.10
 python-dateutil==2.9.0.post0
 redis==6.2.0
 s3transfer==0.13.1
