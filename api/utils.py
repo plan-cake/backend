@@ -712,7 +712,6 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     # End time should be 15 minutes after the last timeslot
     end_time = (datetime.combine(datetime.min, end_time) + timedelta(minutes=15)).time()
 
-    # Then convert back to UTC for the frontend to use
     # datetime.combine has no time zone info, so we include the event's time zone to
     # make sure it doesn't convert twice
     start_datetime = datetime.combine(start_date, start_time).replace(
@@ -720,7 +719,7 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     )
     end_datetime = datetime.combine(end_date, end_time).replace(tzinfo=event_time_zone)
     if event.date_type == UserEvent.EventType.SPECIFIC:
-        # Convert to UTC
+        # Convert to UTC for date events, not week events since those stay in local time
         start_datetime = start_datetime.astimezone(ZoneInfo("UTC"))
         end_datetime = end_datetime.astimezone(ZoneInfo("UTC"))
 
