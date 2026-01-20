@@ -135,6 +135,9 @@ def add_availability(request):
                     )
                 EventWeekdayAvailability.objects.bulk_create(new_availabilities)
 
+            # Update participant updated_at
+            participant.save()
+
     except UserEvent.DoesNotExist:
         return Response(
             {"error": {"event_code": ["Event not found."]}},
