@@ -122,6 +122,14 @@ class EventParticipant(models.Model):
 
 
 class EventWeekdayTimeslot(models.Model):
+    """
+    Timeslot for generic week events.
+
+    The timeslots in this model are stored in the LOCAL time of the event creator. This is
+    to ensure a consistent source of truth for the event time as daylight saving time
+    changes occur.
+    """
+
     event_weekday_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="weekday_timeslots"
@@ -140,6 +148,13 @@ class EventWeekdayTimeslot(models.Model):
 
 
 class EventDateTimeslot(models.Model):
+    """
+    Timeslot for specific date events.
+
+    The timeslots in this model are stored in UTC. The event is not repeating, and each
+    timeslot represents a specific point in time.
+    """
+
     event_date_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
