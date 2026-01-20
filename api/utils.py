@@ -694,7 +694,7 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
             ]
         case UserEvent.EventType.GENERIC:
             all_timeslots = [
-                get_weekday_date(ts.weekday, ts.timeslot).astimezone(event_time_zone)
+                get_weekday_date(ts.weekday, ts.timeslot)
                 for ts in event.weekday_timeslots.all()
             ]
 
@@ -715,16 +715,14 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     # Then convert back to UTC for the frontend to use
     # datetime.combine has no time zone info, so we include the event's time zone to
     # make sure it doesn't convert twice
-    start_datetime = (
-        datetime.combine(start_date, start_time)
-        .replace(tzinfo=event_time_zone)
-        .astimezone(ZoneInfo("UTC"))
+    start_datetime = datetime.combine(start_date, start_time).replace(
+        tzinfo=event_time_zone
     )
-    end_datetime = (
-        datetime.combine(end_date, end_time)
-        .replace(tzinfo=event_time_zone)
-        .astimezone(ZoneInfo("UTC"))
-    )
+    end_datetime = datetime.combine(end_date, end_time).replace(tzinfo=event_time_zone)
+    if event.date_type == UserEvent.EventType.SPECIFIC:
+        # Convert to UTC
+        start_datetime = start_datetime.astimezone(ZoneInfo("UTC"))
+        end_datetime = end_datetime.astimezone(ZoneInfo("UTC"))
 
     return EventBounds(
         start_date=start_datetime.date(),
