@@ -731,11 +731,14 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     )
 
 
-def format_event_info(event: UserEvent) -> dict:
+def format_event_info(event: UserEvent, include_participants: bool = False) -> dict:
     """
     Formats event information.
 
     For query efficiency, the event's timeslots should be prefetched.
+
+    If `include_participants` is `True`, the event's participants should also be
+    prefetched.
     """
     bounds = get_event_bounds(event)
 
@@ -749,6 +752,11 @@ def format_event_info(event: UserEvent) -> dict:
         "time_zone": event.time_zone,
         "event_code": event.url_code.url_code if event.url_code else None,
     }
+
+    if include_participants:
+        data["participants"] = [
+            participant.display_name for participant in event.participants.all()
+        ]
 
     if event.duration is not None:
         data["duration"] = event.duration

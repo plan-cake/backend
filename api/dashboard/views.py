@@ -33,6 +33,9 @@ class DashboardEventSerializer(serializers.Serializer):
     start_time = serializers.TimeField(required=True)
     end_time = serializers.TimeField(required=True)
     time_zone = TimeZoneField(required=True)
+    participants = serializers.ListField(
+        child=serializers.CharField(max_length=25), required=True, allow_empty=True
+    )
     event_code = serializers.CharField(required=True, max_length=255)
 
 
@@ -111,10 +114,12 @@ def get_dashboard(request):
 
         my_events = []
         for event in created_events:
-            my_events.append(format_event_info(event))
+            my_events.append(format_event_info(event, include_participants=True))
         their_events = []
         for event in participations:
-            their_events.append(format_event_info(event.user_event))
+            their_events.append(
+                format_event_info(event.user_event, include_participants=True)
+            )
 
     except DatabaseError as e:
         logger.db_error(e)
