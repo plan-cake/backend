@@ -87,6 +87,10 @@ def get_dashboard(request):
                         "weekday", "local_timeslot"
                     ),
                 ),
+                Prefetch(
+                    "participants",
+                    queryset=EventParticipant.objects.order_by("display_name"),
+                ),
             )
         )
         # Don't include events that the user both created and participated in
@@ -108,6 +112,10 @@ def get_dashboard(request):
                     queryset=EventWeekdayTimeslot.objects.order_by(
                         "weekday", "local_timeslot"
                     ),
+                ),
+                Prefetch(
+                    "user_event__participants",
+                    queryset=EventParticipant.objects.order_by("display_name"),
                 ),
             )
         )
