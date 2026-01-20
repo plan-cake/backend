@@ -127,16 +127,16 @@ class EventWeekdayTimeslot(models.Model):
         UserEvent, on_delete=models.CASCADE, related_name="weekday_timeslots"
     )
     weekday = models.PositiveSmallIntegerField()
-    timeslot = models.TimeField()
+    local_timeslot = models.TimeField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user_event", "weekday", "timeslot"],
+                fields=["user_event", "weekday", "local_timeslot"],
                 name="unique_weekday_timeslot_per_event",
             )
         ]
-        indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
+        indexes = [models.Index(fields=["user_event", "weekday", "local_timeslot"])]
 
 
 class EventDateTimeslot(models.Model):
@@ -144,15 +144,16 @@ class EventDateTimeslot(models.Model):
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
-    timeslot = DateTimeNoTZField()
+    utc_timeslot = DateTimeNoTZField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user_event", "timeslot"], name="unique_date_timeslot_per_event"
+                fields=["user_event", "utc_timeslot"],
+                name="unique_date_timeslot_per_event",
             )
         ]
-        indexes = [models.Index(fields=["user_event", "timeslot"])]
+        indexes = [models.Index(fields=["user_event", "utc_timeslot"])]
 
 
 class EventWeekdayAvailability(models.Model):
