@@ -89,7 +89,7 @@ def get_dashboard(request):
                 ),
                 Prefetch(
                     "participants",
-                    queryset=EventParticipant.objects.order_by("display_name"),
+                    queryset=EventParticipant.objects.order_by("created_at"),
                 ),
             )
         )
@@ -115,7 +115,7 @@ def get_dashboard(request):
                 ),
                 Prefetch(
                     "user_event__participants",
-                    queryset=EventParticipant.objects.order_by("display_name"),
+                    queryset=EventParticipant.objects.order_by("created_at"),
                 ),
             )
         )

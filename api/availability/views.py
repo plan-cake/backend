@@ -313,7 +313,7 @@ def get_all_availability(request):
 
     try:
         event = UserEvent.objects.get(url_code=event_code)
-        participants = event.participants.all()
+        participants = event.participants.all().order_by("created_at")
 
         # Prep the dictionary with empty arrays for the return value
         availability_dict = {}
