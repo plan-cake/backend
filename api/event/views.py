@@ -68,6 +68,9 @@ def create_date_event(request):
 
     If successful, the URL code for the event will be returned.
 
+    The timeslots must be in ISO format, in the UTC time zone. Otherwise, the attached
+    time zone will be ignored.
+
     A custom URL code can be specified, subject to availability. If unavailable, an error
     message is returned. Only alphanumeric characters and dashes are allowed.
     """
@@ -137,6 +140,9 @@ def create_week_event(request):
     Creates a 'week' type event that spans weekdays in a generic week.
 
     If successful, the URL code for the event will be returned.
+
+    The timeslots must be in ISO format, in the creator's local time. This ensures a
+    single source of truth by anchoring the event in one time zone for the repeated weeks.
 
     A custom URL code can be specified, subject to availability. If unavailable, an error
     message is returned. Only alphanumeric characters and dashes are allowed.
