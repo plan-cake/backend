@@ -689,12 +689,12 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     match event.date_type:
         case UserEvent.EventType.SPECIFIC:
             all_timeslots = [
-                ts.timeslot.astimezone(event_time_zone)
+                ts.utc_timeslot.astimezone(event_time_zone)
                 for ts in event.date_timeslots.all()
             ]
         case UserEvent.EventType.GENERIC:
             all_timeslots = [
-                get_weekday_date(ts.weekday, ts.timeslot)
+                get_weekday_date(ts.weekday, ts.local_timeslot)
                 for ts in event.weekday_timeslots.all()
             ]
 

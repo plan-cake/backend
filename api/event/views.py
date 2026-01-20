@@ -113,7 +113,7 @@ def create_date_event(request):
             # Create timeslot objects
             EventDateTimeslot.objects.bulk_create(
                 [
-                    EventDateTimeslot(user_event=new_event, timeslot=ts)
+                    EventDateTimeslot(user_event=new_event, utc_timeslot=ts)
                     for ts in set(timeslots)
                 ]
             )
@@ -192,7 +192,7 @@ def create_week_event(request):
                     EventWeekdayTimeslot(
                         user_event=new_event,
                         weekday=weekday,
-                        timeslot=time,
+                        local_timeslot=time,
                     )
                     for (weekday, time) in deduplicated_timeslots
                 ]
@@ -259,12 +259,12 @@ def edit_date_event(request):
             # Get the earliest timeslot
             earliest_timeslot = (
                 EventDateTimeslot.objects.filter(user_event=event)
-                .order_by("timeslot")
+                .order_by("utc_timeslot")
                 .first()
             )
             existing_start_date: datetime = None
             if earliest_timeslot:
-                existing_start_date = earliest_timeslot.timeslot
+                existing_start_date = earliest_timeslot.utc_timeslot
             else:
                 logger.critical(
                     f"Event {event.id} has no timeslots when editing date event."
@@ -295,17 +295,17 @@ def edit_date_event(request):
             # Sort out the timeslot difference
             existing_timeslots = set(
                 EventDateTimeslot.objects.filter(user_event=event).values_list(
-                    "timeslot", flat=True
+                    "utc_timeslot", flat=True
                 )
             )
             edited_timeslots = set(timeslots)
             to_delete = existing_timeslots - edited_timeslots
             to_add = [
-                EventDateTimeslot(user_event=event, timeslot=ts)
+                EventDateTimeslot(user_event=event, utc_timeslot=ts)
                 for ts in edited_timeslots - existing_timeslots
             ]
             EventDateTimeslot.objects.filter(
-                user_event=event, timeslot__in=to_delete
+                user_event=event, utc_timeslot__in=to_delete
             ).delete()
             EventDateTimeslot.objects.bulk_create(to_add)
 
@@ -365,7 +365,7 @@ def edit_week_event(request):
             # Sort out the timeslot difference
             existing_timeslots = set(
                 EventWeekdayTimeslot.objects.filter(user_event=event).values_list(
-                    "weekday", "timeslot"
+                    "weekday", "local_timeslot"
                 )
             )
             edited_timeslots = set(
@@ -373,7 +373,7 @@ def edit_week_event(request):
             )
             to_delete = existing_timeslots - edited_timeslots
             to_add = [
-                EventWeekdayTimeslot(user_event=event, weekday=wd, timeslot=ts)
+                EventWeekdayTimeslot(user_event=event, weekday=wd, local_timeslot=ts)
                 for (wd, ts) in edited_timeslots - existing_timeslots
             ]
 
@@ -381,7 +381,7 @@ def edit_week_event(request):
                 # Make sure the query matches each unique weekday, timeslot pair
                 query = Q()
                 for wd, ts in to_delete:
-                    query |= Q(user_event=event, weekday=wd, timeslot=ts)
+                    query |= Q(user_event=event, weekday=wd, local_timeslot=ts)
                 EventWeekdayTimeslot.objects.filter(query).delete()
 
             EventWeekdayTimeslot.objects.bulk_create(to_add)
@@ -418,11 +418,11 @@ def get_event_details(request):
         match event.date_type:
             case UserEvent.EventType.SPECIFIC:
                 timeslots = event.date_timeslots.all()
-                data["timeslots"] = [ts.timeslot for ts in timeslots]
+                data["timeslots"] = [ts.utc_timeslot for ts in timeslots]
             case UserEvent.EventType.GENERIC:
                 timeslots = event.weekday_timeslots.all()
                 data["timeslots"] = [
-                    get_weekday_date(ts.weekday, ts.timeslot) for ts in timeslots
+                    get_weekday_date(ts.weekday, ts.local_timeslot) for ts in timeslots
                 ]
 
         if event.duration:
