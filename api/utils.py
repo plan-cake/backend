@@ -685,16 +685,16 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     event_time_zone = ZoneInfo(event.time_zone)
 
     event_type = get_event_type(event.date_type)
-    # Sort the timeslots by the EVENT'S time zone to get the min/max of the creator
     match event.date_type:
         case UserEvent.EventType.SPECIFIC:
+            # Sort the timeslots by the EVENT'S time zone to get the creator's min/max
             all_timeslots = [
-                ts.timeslot.astimezone(event_time_zone)
+                ts.utc_timeslot.astimezone(event_time_zone)
                 for ts in event.date_timeslots.all()
             ]
         case UserEvent.EventType.GENERIC:
             all_timeslots = [
-                get_weekday_date(ts.weekday, ts.timeslot).astimezone(event_time_zone)
+                get_weekday_date(ts.weekday, ts.local_timeslot)
                 for ts in event.weekday_timeslots.all()
             ]
 
@@ -712,19 +712,16 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     # End time should be 15 minutes after the last timeslot
     end_time = (datetime.combine(datetime.min, end_time) + timedelta(minutes=15)).time()
 
-    # Then convert back to UTC for the frontend to use
     # datetime.combine has no time zone info, so we include the event's time zone to
     # make sure it doesn't convert twice
-    start_datetime = (
-        datetime.combine(start_date, start_time)
-        .replace(tzinfo=event_time_zone)
-        .astimezone(ZoneInfo("UTC"))
+    start_datetime = datetime.combine(start_date, start_time).replace(
+        tzinfo=event_time_zone
     )
-    end_datetime = (
-        datetime.combine(end_date, end_time)
-        .replace(tzinfo=event_time_zone)
-        .astimezone(ZoneInfo("UTC"))
-    )
+    end_datetime = datetime.combine(end_date, end_time).replace(tzinfo=event_time_zone)
+    if event.date_type == UserEvent.EventType.SPECIFIC:
+        # Convert to UTC for date events, not week events since those stay in local time
+        start_datetime = start_datetime.astimezone(ZoneInfo("UTC"))
+        end_datetime = end_datetime.astimezone(ZoneInfo("UTC"))
 
     return EventBounds(
         start_date=start_datetime.date(),

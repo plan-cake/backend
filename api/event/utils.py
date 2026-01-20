@@ -130,11 +130,12 @@ def event_lookup(event_code: str):
     """
     return UserEvent.objects.prefetch_related(
         Prefetch(
-            "date_timeslots", queryset=EventDateTimeslot.objects.order_by("timeslot")
+            "date_timeslots",
+            queryset=EventDateTimeslot.objects.order_by("utc_timeslot"),
         ),
         Prefetch(
             "weekday_timeslots",
-            queryset=EventWeekdayTimeslot.objects.order_by("weekday", "timeslot"),
+            queryset=EventWeekdayTimeslot.objects.order_by("weekday", "local_timeslot"),
         ),
     ).get(url_code=event_code)
 

@@ -76,12 +76,12 @@ def get_dashboard(request):
             .prefetch_related(
                 Prefetch(
                     "date_timeslots",
-                    queryset=EventDateTimeslot.objects.order_by("timeslot"),
+                    queryset=EventDateTimeslot.objects.order_by("utc_timeslot"),
                 ),
                 Prefetch(
                     "weekday_timeslots",
                     queryset=EventWeekdayTimeslot.objects.order_by(
-                        "weekday", "timeslot"
+                        "weekday", "local_timeslot"
                     ),
                 ),
             )
@@ -98,12 +98,12 @@ def get_dashboard(request):
             .prefetch_related(
                 Prefetch(
                     "user_event__date_timeslots",
-                    queryset=EventDateTimeslot.objects.order_by("timeslot"),
+                    queryset=EventDateTimeslot.objects.order_by("utc_timeslot"),
                 ),
                 Prefetch(
                     "user_event__weekday_timeslots",
                     queryset=EventWeekdayTimeslot.objects.order_by(
-                        "weekday", "timeslot"
+                        "weekday", "local_timeslot"
                     ),
                 ),
             )

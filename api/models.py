@@ -122,37 +122,53 @@ class EventParticipant(models.Model):
 
 
 class EventWeekdayTimeslot(models.Model):
+    """
+    Timeslot for generic week events.
+
+    The timeslots in this model are stored in the LOCAL time of the event creator. This is
+    to ensure a consistent source of truth for the event time as daylight saving time
+    changes occur.
+    """
+
     event_weekday_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="weekday_timeslots"
     )
     weekday = models.PositiveSmallIntegerField()
-    timeslot = models.TimeField()
+    local_timeslot = models.TimeField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user_event", "weekday", "timeslot"],
+                fields=["user_event", "weekday", "local_timeslot"],
                 name="unique_weekday_timeslot_per_event",
             )
         ]
-        indexes = [models.Index(fields=["user_event", "weekday", "timeslot"])]
+        indexes = [models.Index(fields=["user_event", "weekday", "local_timeslot"])]
 
 
 class EventDateTimeslot(models.Model):
+    """
+    Timeslot for specific date events.
+
+    The timeslots in this model are stored in UTC. The event is not repeating, and each
+    timeslot represents a specific point in time.
+    """
+
     event_date_timeslot_id = models.AutoField(primary_key=True)
     user_event = models.ForeignKey(
         UserEvent, on_delete=models.CASCADE, related_name="date_timeslots"
     )
-    timeslot = DateTimeNoTZField()
+    utc_timeslot = DateTimeNoTZField()
 
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["user_event", "timeslot"], name="unique_date_timeslot_per_event"
+                fields=["user_event", "utc_timeslot"],
+                name="unique_date_timeslot_per_event",
             )
         ]
-        indexes = [models.Index(fields=["user_event", "timeslot"])]
+        indexes = [models.Index(fields=["user_event", "utc_timeslot"])]
 
 
 class EventWeekdayAvailability(models.Model):

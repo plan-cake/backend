@@ -14,11 +14,11 @@ def get_timeslots(event):
     timeslots = []
     if event.date_type == UserEvent.EventType.SPECIFIC:
         timeslots = EventDateTimeslot.objects.filter(user_event=event).order_by(
-            "timeslot"
+            "utc_timeslot"
         )
     else:
         timeslots = EventWeekdayTimeslot.objects.filter(user_event=event).order_by(
-            "weekday", "timeslot"
+            "weekday", "local_timeslot"
         )
 
     return timeslots

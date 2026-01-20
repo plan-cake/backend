@@ -105,7 +105,7 @@ def add_availability(request):
 
             # Add new availability
             if user_event.date_type == UserEvent.EventType.SPECIFIC:
-                timeslot_dict = {t.timeslot: t for t in timeslots}
+                timeslot_dict = {t.utc_timeslot: t for t in timeslots}
                 new_availabilities = []
                 for timeslot in availability:
                     if timeslot not in timeslot_dict:
@@ -120,7 +120,7 @@ def add_availability(request):
                 EventDateAvailability.objects.bulk_create(new_availabilities)
             elif user_event.date_type == UserEvent.EventType.GENERIC:
                 timeslot_dict = {
-                    get_weekday_date(t.weekday, t.timeslot): t for t in timeslots
+                    get_weekday_date(t.weekday, t.local_timeslot): t for t in timeslots
                 }
                 new_availabilities = []
                 for timeslot in availability:
@@ -243,21 +243,22 @@ def get_self_availability(request):
             availabilities = (
                 EventDateAvailability.objects.filter(event_participant=participant)
                 .select_related("event_date_timeslot")
-                .order_by("event_date_timeslot__timeslot")
+                .order_by("event_date_timeslot__utc_timeslot")
             )
-            data = [a.event_date_timeslot.timeslot for a in availabilities]
+            data = [a.event_date_timeslot.utc_timeslot for a in availabilities]
         else:
             availabilities = (
                 EventWeekdayAvailability.objects.filter(event_participant=participant)
                 .select_related("event_weekday_timeslot")
                 .order_by(
                     "event_weekday_timeslot__weekday",
-                    "event_weekday_timeslot__timeslot",
+                    "event_weekday_timeslot__local_timeslot",
                 )
             )
             data = [
                 get_weekday_date(
-                    a.event_weekday_timeslot.weekday, a.event_weekday_timeslot.timeslot
+                    a.event_weekday_timeslot.weekday,
+                    a.event_weekday_timeslot.local_timeslot,
                 )
                 for a in availabilities
             ]
@@ -316,11 +317,11 @@ def get_all_availability(request):
         timeslots = get_timeslots(event)
         if event.date_type == UserEvent.EventType.SPECIFIC:
             for slot in timeslots:
-                availability_dict[slot.timeslot.isoformat()] = []
+                availability_dict[slot.utc_timeslot.isoformat()] = []
         else:
             for slot in timeslots:
                 availability_dict[
-                    get_weekday_date(slot.weekday, slot.timeslot).isoformat()
+                    get_weekday_date(slot.weekday, slot.local_timeslot).isoformat()
                 ] = []
 
         if not len(participants):
@@ -344,11 +345,12 @@ def get_all_availability(request):
                 EventDateAvailability.objects.filter(event_participant__in=participants)
                 .select_related("event_date_timeslot", "event_participant")
                 .order_by(
-                    "event_date_timeslot__timeslot", "event_participant__display_name"
+                    "event_date_timeslot__utc_timeslot",
+                    "event_participant__display_name",
                 )
             )
             for t in availabilities:
-                timeslot = t.event_date_timeslot.timeslot.isoformat()
+                timeslot = t.event_date_timeslot.utc_timeslot.isoformat()
                 if timeslot not in availability_dict:
                     logger.error(
                         f"Timeslot {timeslot} not found in availability dict for event {event_code}"
@@ -372,14 +374,14 @@ def get_all_availability(request):
                 .select_related("event_weekday_timeslot", "event_participant")
                 .order_by(
                     "event_weekday_timeslot__weekday",
-                    "event_weekday_timeslot__timeslot",
+                    "event_weekday_timeslot__local_timeslot",
                     "event_participant__display_name",
                 )
             )
             for t in availabilities:
                 timeslot = get_weekday_date(
                     t.event_weekday_timeslot.weekday,
-                    t.event_weekday_timeslot.timeslot,
+                    t.event_weekday_timeslot.local_timeslot,
                 ).isoformat()
                 if timeslot not in availability_dict:
                     logger.error(
