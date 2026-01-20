@@ -685,9 +685,9 @@ def get_event_bounds(event: UserEvent) -> EventBounds:
     event_time_zone = ZoneInfo(event.time_zone)
 
     event_type = get_event_type(event.date_type)
-    # Sort the timeslots by the EVENT'S time zone to get the min/max of the creator
     match event.date_type:
         case UserEvent.EventType.SPECIFIC:
+            # Sort the timeslots by the EVENT'S time zone to get the min/max of the creator
             all_timeslots = [
                 ts.utc_timeslot.astimezone(event_time_zone)
                 for ts in event.date_timeslots.all()
