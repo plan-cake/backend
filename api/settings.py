@@ -25,6 +25,7 @@ SECRET_KEY = env("SECRET_KEY")
 DEBUG = env.bool("DEBUG", default=False)
 
 BASE_URL = env("BASE_URL")
+API_URL = env("API_URL")
 
 
 # Application definition
@@ -44,7 +45,7 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = True if DEBUG else False
 CORS_ALLOWED_ORIGINS = [BASE_URL, "http://localhost"]
-ALLOWED_HOSTS = [BASE_URL.replace("https://", "").replace("http://", ""), "localhost"]
+ALLOWED_HOSTS = [API_URL.replace("https://", "").replace("http://", ""), "localhost"]
 
 ROOT_URLCONF = "api.urls"
 
