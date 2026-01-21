@@ -9,7 +9,7 @@ module.exports = {
             args: "-m gunicorn api.wsgi --bind 127.0.0.1:8000",
             instances: 1,
             autorestart: true,
-            max_memory_restart: "150M",
+            max_memory_restart: "250M",
         },
         {
             name: "celery-worker",
