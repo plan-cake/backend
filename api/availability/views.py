@@ -135,6 +135,9 @@ def add_availability(request):
                     )
                 EventWeekdayAvailability.objects.bulk_create(new_availabilities)
 
+            # Update participant updated_at
+            participant.save()
+
     except UserEvent.DoesNotExist:
         return Response(
             {"error": {"event_code": ["Event not found."]}},
@@ -310,7 +313,7 @@ def get_all_availability(request):
 
     try:
         event = UserEvent.objects.get(url_code=event_code)
-        participants = event.participants.all()
+        participants = event.participants.all().order_by("created_at")
 
         # Prep the dictionary with empty arrays for the return value
         availability_dict = {}

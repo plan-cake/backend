@@ -108,6 +108,8 @@ class EventParticipant(models.Model):
     )
     display_name = models.CharField(max_length=25)
     time_zone = models.CharField(max_length=64)
+    created_at = DateTimeNoTZField(auto_now_add=True)
+    updated_at = DateTimeNoTZField(auto_now=True)
 
     class Meta:
         constraints = [
