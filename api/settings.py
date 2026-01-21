@@ -3,6 +3,7 @@ import os
 import time
 import traceback
 from pathlib import Path
+from urllib.parse import urlparse
 
 import environ
 from celery.schedules import crontab
@@ -45,7 +46,7 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = True if DEBUG else False
 CORS_ALLOWED_ORIGINS = [BASE_URL, "http://localhost"]
-ALLOWED_HOSTS = [API_URL.replace("https://", "").replace("http://", ""), "localhost"]
+ALLOWED_HOSTS = [urlparse(API_URL).hostname, "localhost"]
 
 ROOT_URLCONF = "api.urls"
 
