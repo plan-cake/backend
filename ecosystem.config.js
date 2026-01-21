@@ -3,26 +3,13 @@ const path = require('path');
 module.exports = {
     apps: [
         {
-            name: "plancake-site",
-            cwd: path.join(__dirname, '../frontend'),
-            script: "npm",
-            args: "start",
-            env: {
-                NODE_ENV: "production",
-                PORT: 3000
-            },
-            instances: 1,
-            autorestart: true,
-            max_memory_restart: "200M",
-        },
-        {
             name: "plancake-api",
             cwd: __dirname,
             script: "./.venv/bin/python",
             args: "-m gunicorn api.wsgi --bind 127.0.0.1:8000",
             instances: 1,
             autorestart: true,
-            max_memory_restart: "150M",
+            max_memory_restart: "250M",
         },
         {
             name: "celery-worker",
