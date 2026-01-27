@@ -31,3 +31,8 @@ class CheckPasswordSerializer(serializers.Serializer):
 class PasswordResetSerializer(serializers.Serializer):
     reset_token = serializers.CharField(required=True)
     new_password = serializers.CharField(required=True)
+
+
+class AccountDetailsSerializer(serializers.Serializer):
+    email = serializers.EmailField(required=True)
+    default_display_name = serializers.CharField(required=True, allow_null=True)
