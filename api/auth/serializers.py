@@ -35,4 +35,6 @@ class PasswordResetSerializer(serializers.Serializer):
 
 class AccountDetailsSerializer(serializers.Serializer):
     email = serializers.EmailField(required=True)
-    default_display_name = serializers.CharField(required=True, allow_null=True)
+    default_display_name = serializers.CharField(
+        required=True, allow_null=True, max_length=25
+    )
