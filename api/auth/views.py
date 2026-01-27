@@ -9,6 +9,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 
 from api.auth.serializers import (
+    AccountDetailsSerializer,
     CheckPasswordSerializer,
     EmailSerializer,
     EmailVerifySerializer,
@@ -328,15 +329,21 @@ def check_password(request):
 
 @api_endpoint("GET")
 @require_account_auth
-@validate_output(MessageOutputSerializer)
+@validate_output(AccountDetailsSerializer)
 def check_account_auth(request):
     """
     Checks if the client is authenticated with a user account.
 
-    In the future, this endpoint could be used to return user-personalized data like
-    settings or preferences.
+    This endpoint also returns settings and details about the user account.
     """
-    return Response({"message": [f"Logged in as {request.user.email}."]}, status=200)
+    user = request.user
+    return Response(
+        {
+            "email": user.email,
+            "default_display_name": user.default_display_name,
+        },
+        status=200,
+    )
 
 
 class PasswordResetThrottle(AnonRateThrottle):
