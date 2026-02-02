@@ -238,7 +238,7 @@ class LoginThrottle(AnonRateThrottle):
 @api_endpoint("POST")
 @rate_limit(LoginThrottle, "Login limit reached ({rate}). Try again later.")
 @validate_json_input(LoginSerializer)
-@validate_output(MessageOutputSerializer)
+@validate_output(AccountDetailsSerializer)
 def login(request):
     """
     Logs in a user account by creating a session token and setting it as a cookie.
@@ -307,7 +307,13 @@ def login(request):
         logger.error(e)
         return GENERIC_ERR_RESPONSE
 
-    response = Response({"message": ["Login successful."]}, status=200)
+    response = Response(
+        {
+            "email": user.email,
+            "default_display_name": user.default_display_name,
+        },
+        status=200,
+    )
     set_session_cookie(response, ACCOUNT_COOKIE_NAME, session_token, remember_me)
     return response
 
