@@ -16,6 +16,7 @@ from api.availability.utils import get_weekday_date
 from api.models import UserAccount, UserEvent, UserSession
 from api.settings import (
     ACCOUNT_COOKIE_NAME,
+    COOKIE_DOMAIN,
     GENERIC_ERR_RESPONSE,
     GUEST_COOKIE_NAME,
     LONG_SESS_EXP_SECONDS,
@@ -111,7 +112,17 @@ def set_session_cookie(response, key, value, is_extended):
         secure=True,
         samesite="Lax",
         max_age=LONG_SESS_EXP_SECONDS if is_extended else SESS_EXP_SECONDS,
+        domain=COOKIE_DOMAIN,
     )
+
+
+def delete_session_cookie(response, key):
+    """
+    Given a response, deletes a session cookie.
+
+    The domain needs to be specified to delete the right cookie.
+    """
+    response.delete_cookie(key, domain=COOKIE_DOMAIN)
 
 
 def check_auth(func):
@@ -198,7 +209,7 @@ def check_auth(func):
                 response.data["message"].append(SESS_EXP_MSG)
             else:
                 response.data["message"] = [SESS_EXP_MSG]
-            response.delete_cookie(ACCOUNT_COOKIE_NAME)
+            delete_session_cookie(response, ACCOUNT_COOKIE_NAME)
         return response
 
     return wrapper
@@ -373,7 +384,7 @@ def require_auth(func):
                 response.data["message"].append(SESS_EXP_MSG)
             else:
                 response.data["message"] = [SESS_EXP_MSG]
-            response.delete_cookie(ACCOUNT_COOKIE_NAME)
+            delete_session_cookie(response, ACCOUNT_COOKIE_NAME)
         return response
 
     get_metadata(wrapper).min_auth_required = "Guest"
