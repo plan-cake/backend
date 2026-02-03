@@ -17,6 +17,7 @@ from api.models import UserAccount, UserEvent, UserSession
 from api.settings import (
     ACCOUNT_COOKIE_NAME,
     COOKIE_DOMAIN,
+    DEBUG,
     GENERIC_ERR_RESPONSE,
     GUEST_COOKIE_NAME,
     LONG_SESS_EXP_SECONDS,
@@ -109,7 +110,7 @@ def set_session_cookie(response, key, value, is_extended):
         key=key,
         value=value,
         httponly=True,
-        secure=True,
+        secure=False if DEBUG else True,
         samesite="Lax",
         max_age=LONG_SESS_EXP_SECONDS if is_extended else SESS_EXP_SECONDS,
         domain=COOKIE_DOMAIN,
