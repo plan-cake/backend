@@ -23,6 +23,7 @@ from api.settings import (
     LONG_SESS_EXP_SECONDS,
     REST_FRAMEWORK,
     SESS_EXP_SECONDS,
+    TEST_ENVIRONMENT,
 )
 
 logger = logging.getLogger("api")
@@ -105,13 +106,17 @@ def set_session_cookie(response, key, value, is_extended):
     Given a response, sets a session cookie with appropriate parameters.
 
     Mostly just to avoid repeating this 8-line block of code.
+
+    The TEST_ENVIRONMENT environment variable determines the `secure` and `samesite`
+    parameters for testing to allow proper cookie functionality in different testing
+    environments.
     """
     response.set_cookie(
         key=key,
         value=value,
         httponly=True,
-        secure=False if DEBUG else True,
-        samesite="Lax",
+        secure=False if DEBUG and TEST_ENVIRONMENT == "Local" else True,
+        samesite="None" if DEBUG and TEST_ENVIRONMENT == "Codespaces" else "Lax",
         max_age=LONG_SESS_EXP_SECONDS if is_extended else SESS_EXP_SECONDS,
         domain=COOKIE_DOMAIN,
     )
