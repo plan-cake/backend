@@ -24,6 +24,11 @@ env = environ.Env()
 SECRET_KEY = env("SECRET_KEY")
 
 DEBUG = env.bool("DEBUG", default=False)
+TEST_ENVIRONMENT = env("TEST_ENVIRONMENT", default="")
+if DEBUG and (TEST_ENVIRONMENT not in ["Local", "Codespaces"]):
+    raise ValueError(
+        "DEBUG is True but TEST_ENVIRONMENT is not set to Local or Codespaces."
+    )
 
 BASE_URL = env("BASE_URL")
 API_URL = env("API_URL")
