@@ -42,12 +42,15 @@ def check_custom_code(code):
 
 
 def generate_code():
+    ambiguous_chars = "Il1O0"
+    allowed_chars = "".join(
+        [c for c in string.ascii_letters + string.digits if c not in ambiguous_chars]
+    )
+
     def generate_random_string():
         return "".join(
             # Using SystemRandom() is "cryptographically more secure"
-            random.SystemRandom().choices(
-                string.ascii_letters + string.digits, k=RAND_URL_CODE_LENGTH
-            )
+            random.SystemRandom().choices(allowed_chars, k=RAND_URL_CODE_LENGTH)
         )
 
     code = generate_random_string()
