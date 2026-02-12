@@ -24,10 +24,15 @@ env = environ.Env()
 SECRET_KEY = env("SECRET_KEY")
 
 DEBUG = env.bool("DEBUG", default=False)
+TEST_ENVIRONMENT = env("TEST_ENVIRONMENT", default="")
+if DEBUG and (TEST_ENVIRONMENT not in ["Local", "Codespaces"]):
+    raise ValueError(
+        "DEBUG is True but TEST_ENVIRONMENT is not set to Local or Codespaces."
+    )
 
 BASE_URL = env("BASE_URL")
 API_URL = env("API_URL")
-
+COOKIE_DOMAIN = env("COOKIE_DOMAIN")
 
 # Application definition
 
@@ -44,8 +49,12 @@ MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
 ]
 
+# CORS, CSRF, and allowed hosts settings
 CORS_ALLOW_ALL_ORIGINS = True if DEBUG else False
 CORS_ALLOWED_ORIGINS = [BASE_URL, "http://localhost"]
+CORS_ALLOW_CREDENTIALS = True
+CSRF_TRUSTED_ORIGINS = [BASE_URL, "http://localhost"]
+CSRF_COOKIE_DOMAIN = COOKIE_DOMAIN
 ALLOWED_HOSTS = [urlparse(API_URL).hostname, "localhost"]
 
 ROOT_URLCONF = "api.urls"

@@ -39,6 +39,7 @@ from api.settings import (
 from api.utils import (
     MessageOutputSerializer,
     api_endpoint,
+    delete_session_cookie,
     get_session,
     rate_limit,
     require_account_auth,
@@ -500,7 +501,7 @@ def logout(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Logged out successfully."]}, status=200)
-    response.delete_cookie(ACCOUNT_COOKIE_NAME)
+    delete_session_cookie(response, ACCOUNT_COOKIE_NAME)
     return response
 
 
@@ -528,5 +529,5 @@ def delete_account(request):
         return GENERIC_ERR_RESPONSE
 
     response = Response({"message": ["Account deleted successfully."]}, status=200)
-    response.delete_cookie(ACCOUNT_COOKIE_NAME)
+    delete_session_cookie(response, ACCOUNT_COOKIE_NAME)
     return response
