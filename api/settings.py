@@ -87,6 +87,9 @@ TIME_ZONE = "UTC"
 USE_TZ = False
 
 REST_FRAMEWORK = {
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
     "DEFAULT_AUTHENTICATION_CLASSES": [],
     "DEFAULT_THROTTLE_RATES": {
         "user_account_creation": "3/hour",

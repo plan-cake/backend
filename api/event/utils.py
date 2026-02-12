@@ -41,12 +41,17 @@ def check_custom_code(code):
         return "Code unavailable."
 
 
+ALLOWED_URL_CODE_CHARS = "".join(
+    [c for c in string.ascii_letters + string.digits if c not in "Il1O0"]
+)
+
+
 def generate_code():
     def generate_random_string():
         return "".join(
             # Using SystemRandom() is "cryptographically more secure"
             random.SystemRandom().choices(
-                string.ascii_letters + string.digits, k=RAND_URL_CODE_LENGTH
+                ALLOWED_URL_CODE_CHARS, k=RAND_URL_CODE_LENGTH
             )
         )
 
