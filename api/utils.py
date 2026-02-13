@@ -118,7 +118,7 @@ def set_session_cookie(response, key, value, is_extended):
         secure=False if DEBUG and TEST_ENVIRONMENT == "Local" else True,
         samesite="None" if DEBUG and TEST_ENVIRONMENT == "Codespaces" else "Lax",
         max_age=LONG_SESS_EXP_SECONDS if is_extended else SESS_EXP_SECONDS,
-        domain=COOKIE_DOMAIN,
+        domain=None if DEBUG and TEST_ENVIRONMENT == "Local" else COOKIE_DOMAIN,
     )
 
 
@@ -128,7 +128,9 @@ def delete_session_cookie(response, key):
 
     The domain needs to be specified to delete the right cookie.
     """
-    response.delete_cookie(key, domain=COOKIE_DOMAIN)
+    response.delete_cookie(
+        key, domain=None if DEBUG and TEST_ENVIRONMENT == "Local" else COOKIE_DOMAIN
+    )
 
 
 def check_auth(func):
